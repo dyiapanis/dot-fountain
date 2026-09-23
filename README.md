@@ -1,62 +1,80 @@
 # fountain-cm6
 
-> [Fountain](https://fountain.io) screenplay syntax for [CodeMirror 6](https://codemirror.net) — live element highlighting, inline emphasis, and screenplay typography — with ready-made host glue for [MarkEdit](https://github.com/MarkEdit-app/MarkEdit) on macOS.
+> [Fountain](https://fountain.io) screenplay syntax for [CodeMirror 6](https://codemirror.net) — live element highlighting, screenplay typography, and scene navigation — with ready-made host glue for [MarkEdit](https://github.com/MarkEdit-app/MarkEdit) on macOS.
 
-Fountain is plain text: write screenplays in any editor, everywhere. `fountain-cm6` makes a *minimal* editor understand them: scene headings, character cues, dialogue, parentheticals, transitions, dual dialogue, notes, synopses, sections, lyrics and page breaks — recognized per the [official syntax spec](https://fountain.io/syntax/) and styled as you type. The text itself is never modified.
+Fountain is plain text: write screenplays in any editor, everywhere. `fountain-cm6` makes a minimal editor *understand* them — scene headings, character cues, dialogue, parentheticals, transitions, dual dialogue, notes, synopses, sections, lyrics and page breaks — recognized per the [official syntax spec](https://fountain.io/syntax/) and styled live as you type. **The text itself is never modified.**
 
-**Status:** v0.1 in development — core classifier complete and spec-tested; MarkEdit integration is the next milestone.
+## Installing (MarkEdit, macOS)
+
+**Via "Install from URL"** (MarkEdit → Settings → Extensions):
+
+```
+https://raw.githubusercontent.com/dyiapanis/fountain-cm6/main/hosts/markedit/dist/markedit-fountain.js
+```
+
+**Or manually:**
+
+1. Download [`markedit-fountain.js`](hosts/markedit/dist/markedit-fountain.js)
+2. Place it in:
+   ```
+   ~/Library/Containers/app.cyan.markedit/Data/Documents/scripts/
+   ```
+3. Relaunch MarkEdit and open a `.fountain` file — it comes alive.
+
+## What you get
+
+- **Element highlighting** — bold scene headings, indented dialogue and character cues, italic parentheticals, right-aligned transitions, tinted `[[notes]]`, `== synopses ==`, `~ lyrics`, sections, and a dashed page-break rule under `> > >`
+- **Inline emphasis** — `*italic*`, `**bold**`, `***bold italic***`, `_*underline*`_ and combinations, styled as you type
+- **Scene navigation** — Extensions → Fountain → *Go to Next/Previous Scene*, also bound to Option+↓ / Option+↑
+- **Script stats** — Extensions → Fountain → *Script Stats…* (scenes, word count, dialogue words)
+- **Auto-detection** — ordinary Markdown files are untouched; the extension only activates on documents that look like a screenplay (a scene heading, or two or more character cues)
+
+Want different colors? The stylesheet reads CSS variables (`--mf-scene`, `--mf-dialogue`, `--mf-character`, `--mf-parenthetical`, `--mf-transition`, `--mf-note`, `--mf-synopsis`, `--mf-section`, `--mf-lyric`) — set them in MarkEdit's custom CSS to re-theme.
 
 ## Why this design
 
 The project is split into two layers:
 
 ```
-src/     pure CodeMirror 6 — classify.ts, spans.ts, highlight.ts, commands.ts
-hosts/   thin per-host glue — markedit/, web/, (future: obsidian/)
+src/     pure CodeMirror 6 — classify.ts, spans.ts, highlight.ts, commands.ts, style.css
+hosts/   thin per-host glue — markedit/ (built), web/ (planned)
 ```
 
-`src/` never imports a host package. The same core powers the MarkEdit extension, a browser playground, and any future CM6 host.
+`src/` never imports a host package. The same core powers the MarkEdit extension, a browser playground, and any future CM6 host (an Obsidian plugin maps naturally, since its editor *is* CodeMirror 6).
 
-## Architecture
-
-- **`classify.ts`** — line-oriented classifier implementing the Fountain spec: forced headings (`.INT. X`), scene numbers (`#12#`), dual dialogue (`=`), blocks (`[[note]]`, `== synopsis ==`, `~ lyric`), radiobutton titles, and auto-detection of Fountain documents.
-- **`spans.ts`** — inline spans with markdown-style lookbehind guards so emphasis (`*i*`, `**b**`, `***bi***`, `_*u*_`, `_**bu**_`, nested combos), notes and scene numbers never mis-pair.
-- **`highlight.ts`** — a single `ViewPlugin` producing line + mark + widget decorations from the visible document. Fountain scripts are small (a 120-page screenplay is ~50 KB); a full re-classify per doc change is cheap and keeps context-sensitive rules exact.
-- **`hosts/markedit/`** — builds to one self-contained `markedit-fountain.js` for MarkEdit's scripts folder.
-
-## Installing (MarkEdit, macOS)
-
-1. Download the latest `markedit-fountain.js` from [Releases](../../releases).
-2. Place it in:
-   ```
-   ~/Library/Containers/app.cyan.markedit/Data/Documents/scripts/
-   ```
-3. Relaunch MarkEdit. Open a `.fountain` file — it comes alive.
-
-Or with the dev workflow (auto-build + copy on save):
-
-```sh
-cd hosts/markedit && npm run watch
-```
+- **`classify.ts`** — line-oriented classifier implementing the Fountain spec: forced headings (`.INT. X`), `!` action escapes, scene numbers (`#12A#`), dual dialogue (`=`), multi-line `[[notes]]`, `== synopses ==`, `~ lyrics`, title-page keys, and document auto-detection.
+- **`spans.ts`** — inline spans with lookaround guards so emphasis runs (`**, *` between two) never mis-pair.
+- **`highlight.ts`** — a single `ViewPlugin` producing line + mark + widget decorations. Fountain scripts are small (a 120-page screenplay is ~50 KB); a full re-classify per change is cheap and keeps context-sensitive rules exact.
+- **`hosts/markedit/`** — ~60 lines of glue building to one self-contained `markedit-fountain.js`, sharing MarkEdit's own CodeMirror modules.
 
 ## Development
 
 ```sh
+git clone https://github.com/dyiapanis/fountain-cm6
+cd fountain-cm6
 npm install
-npm test          # vitest — spec fixtures from fountain.io/syntax
+npm test          # vitest — fixtures taken from the fountain.io/syntax examples
 npm run typecheck
+
+# build the MarkEdit extension:
+cd hosts/markedit && npm install && npm run build
 ```
+
+## Contributing
+
+Issues and PRs welcome. The classifier is the heart of the project — if a line of your screenplay is misclassified, that's a bug: open an issue with the exact text (plus a line or two of surrounding context) and what element it should be. Style/theme contributions should stick to the CSS-variable contract above.
 
 ## Roadmap
 
 - [x] Core classifier + inline spans, spec-tested
-- [x] CM6 decoration layer
-- [ ] MarkEdit host glue + menu commands (jump to next scene, scene count)
-- [ ] Screenplay typography theme (dialogue indent, centred cues)
-- [ ] v0.1 release → submit to [MarkEdit extensions registry](https://github.com/MarkEdit-app/extensions)
+- [x] CM6 decoration layer + screenplay typography
+- [x] MarkEdit host glue, menu commands, script stats
+- [ ] v0.1 release → submit to the [MarkEdit extensions registry](https://github.com/MarkEdit-app/extensions)
 - [ ] v0.2: HTML preview pane (Fountain.js), page-count estimation, dual-dialogue columns
 - [ ] Later: browser playground (`hosts/web`), Obsidian plugin
 
-## License
+## Credits & license
 
-MIT — see [LICENSE](LICENSE). Fountain is a spec by [Final Draft](https://finaldraft.com); this project implements the public syntax description and is not affiliated with Final Draft or MarkEdit.
+Fountain was created by [John August](https://johnaugust.com) and [Stu Maschwitz](https://prolost.com), merging their Scrippets and Screenplay Markdown projects. This package implements the public syntax description and is not affiliated with the Fountain authors or with MarkEdit.
+
+MIT — see [LICENSE](LICENSE).

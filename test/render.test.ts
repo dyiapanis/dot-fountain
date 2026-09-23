@@ -7,6 +7,10 @@ Author: fountain-cm6
 
 ===
 
+# Act One
+
+= Our hero arrives.
+
 INT. MARKEDIT WINDOW - DAY
 
 A blinking cursor waits. The writer cracks their knuckles.
@@ -16,7 +20,12 @@ They're coming out of the woodwork!
 (pause)
 Point Blank Sniper?
 
-EXT. GARDEN - NIGHT
+[[This is a note that must not appear.]]
+
+/* Dead scene
+that must not appear either. */
+
+EXT. GARDEN - NIGHT #7#
 
 BRICK
 Who?!
@@ -30,10 +39,15 @@ describe("renderFountainHtml", () => {
     expect(html).toContain("THE DEMO");
   });
 
-  it("numbers scene headings sequentially and bolds them", () => {
+  it("numbers scene headings sequentially with bold left+right numbers", () => {
     expect(html).toContain('class="fp-scene"');
-    expect(html).toContain('fp-sceneno">1.</span>');
-    expect(html).toContain('fp-sceneno">2.</span>');
+    expect(html).toContain('fp-sceneno">1</span>');
+    // explicit #7# overrides auto-numbering:
+    expect(html).toContain('fp-sceneno">7</span>');
+  });
+
+  it("right-hand scene number class present", () => {
+    expect(html).toContain("fp-sceneno-r");
   });
 
   it("renders character cues uppercase with AWG indent class", () => {
@@ -44,6 +58,18 @@ describe("renderFountainHtml", () => {
   it("renders dialogue and parentheticals with their classes", () => {
     expect(html).toContain('class="fp-dialogue"');
     expect(html).toContain('class="fp-parenthetical"');
+  });
+
+  it("sections, synopses, notes and boneyard are absent from output", () => {
+    expect(html).not.toContain("Act One");
+    expect(html).not.toContain("Our hero arrives");
+    expect(html).not.toContain("must not appear");
+    expect(html).not.toContain("Dead scene");
+  });
+
+  it("renders === page break as a rule", () => {
+    const paged = renderFountainHtml("INT. A - DAY\n\nAction.\n\n===\n\nINT. B - NIGHT\n");
+    expect(paged).toContain('hr class="fp-pagebreak"');
   });
 
   it("escapes HTML in script text", () => {

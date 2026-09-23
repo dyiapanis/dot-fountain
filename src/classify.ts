@@ -156,8 +156,12 @@ function classifyOutside(t: string, prevBlank: boolean, nextBlank: boolean): Lin
   return "action";
 }
 
-/** Heuristic: does this document look like a screenplay? */
-export function detectFountain(lines: LineInfo[]): boolean {
+/**
+ * Heuristic: does this document look like a screenplay?
+ * Accepts raw text (classifies internally) or pre-classified lines.
+ */
+export function detectFountain(input: string | LineInfo[]): boolean {
+  const lines = typeof input === "string" ? classify(input) : input;
   let cues = 0;
   for (const l of lines) {
     switch (l.type) {

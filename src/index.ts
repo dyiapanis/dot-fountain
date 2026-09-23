@@ -1,4 +1,4 @@
-// fountain-cm6 public API.
+// dot-fountain public API.
 // Hosts (MarkEdit glue, web playground, future Obsidian plugin) import
 // ONLY from here. The core never imports a host.
 

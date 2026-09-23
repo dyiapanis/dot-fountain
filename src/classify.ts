@@ -1,4 +1,4 @@
-// fountain-cm6 — core classifier for Fountain (fountain.io) syntax.
+// dot-fountain — core classifier for Fountain (fountain.io) syntax.
 // Pure logic: no CodeMirror or host imports, unit-testable anywhere.
 //
 // Element rules per the official spec at https://fountain.io/syntax/

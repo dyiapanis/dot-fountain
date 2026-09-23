@@ -9,9 +9,9 @@ export default defineConfig(
     build: {
       lib: {
         entry: "main.ts",
-        name: "markedit-fountain",
+        name: "dot-fountain",
         formats: ["cjs"],
-        fileName: () => "markedit-fountain.js",
+        fileName: () => "dot-fountain.js",
       },
       // CSS is inlined into the JS bundle (imported as a string), so the
       // build output is exactly one file.

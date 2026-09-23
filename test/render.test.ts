@@ -3,7 +3,7 @@ import { renderFountainHtml } from "../src/render";
 
 const script = `Title: THE DEMO
 Credit: written by
-Author: fountain-cm6
+Author: dot-fountain
 
 ===
 

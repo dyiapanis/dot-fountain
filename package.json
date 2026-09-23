@@ -1,0 +1,36 @@
+{
+  "name": "fountain-cm6",
+  "version": "0.1.0",
+  "description": "Fountain screenplay syntax support as a CodeMirror 6 extension — highlighting, typography and navigation for fountain.io markup. Host-agnostic core with glue for MarkEdit (and more).",
+  "type": "module",
+  "license": "MIT",
+  "author": "Demetri <dyiapanis>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dyiapanis/fountain-cm6.git"
+  },
+  "keywords": [
+    "fountain",
+    "screenplay",
+    "codemirror",
+    "codemirror6",
+    "markedit",
+    "markdown"
+  ],
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@codemirror/state": "^6.0.0",
+    "@codemirror/view": "^6.0.0"
+  },
+  "devDependencies": {
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.13",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}

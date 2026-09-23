@@ -4,33 +4,175 @@
 //
 // This is the ONLY file that imports markedit-api. Everything else is
 // portable CM6 (works in Obsidian, web, tests).
+//
+// Features:
+// - Live Preview Edit / Fountain (markdown) editor-mode toggle
+// - Preview pane on the right: an AWG-geometry screenplay page,
+//   re-rendered live while typing (pattern from MarkEdit-preview).
 
 import { MarkEdit } from "markedit-api";
-import { detectFountain, fountainHighlight, getMode, modeField, setMode } from "../../src";
+import { EditorView, type ViewUpdate } from "@codemirror/view";
+import {
+  detectFountain,
+  fountainHighlight,
+  getMode,
+  modeField,
+  setMode,
+} from "../../src";
 import { fountainKeymap, fountainStats, gotoNextScene, gotoPrevScene } from "../../src/commands";
-import css from "../../src/style.css?inline";
+import { renderFountainHtml } from "../../src/render";
+import editorCss from "../../src/style.css?inline";
+import previewCss from "../../src/preview.css?inline";
+import Split from "split-grid";
 
-// Load the screenplay stylesheet once.
-const style = document.createElement("style");
-style.id = "fountain-cm6-style";
-if (!document.getElementById(style.id)) document.head.appendChild(style);
-style.textContent = css;
+// ---------- stylesheets ----------
+function appendStyleOnce(id: string, css: string): void {
+  if (document.getElementById(id)) return;
+  const style = document.createElement("style");
+  style.id = id;
+  style.textContent = css;
+  document.head.appendChild(style);
+}
 
-// Is the current document Fountain? (Both mode items disable on plain
-// markdown, since the toggle would have no visible effect there.)
-const isFountain = (): boolean => detectFountain(MarkEdit.editorView.state.doc.toString());
+appendStyleOnce("fountain-cm6-style", editorCss);
+appendStyleOnce("fountain-cm6-preview-style", previewCss);
 
-// Activate Fountain support when the editor becomes available. The plugin
-// self-gates: it only decorates documents that look like Fountain, and the
-// mode field lets the user flip styling off entirely.
-MarkEdit.onEditorReady(() => {
-  MarkEdit.addExtension([modeField, fountainHighlight(), fountainKeymap()]);
+// Host layout: when the pane is open, body becomes a 2-column grid —
+// the editor's own container falls into column 1 (same technique as
+// MarkEdit-preview's side-by-side mode), our pane into column 2.
+appendStyleOnce(
+  "fountain-cm6-pane-style",
+  `
+  body.fountain-preview-open {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 5px minmax(0, 1.2fr);
+    height: 100vh;
+  }
+  body.fountain-preview-open > :first-child { min-width: 0; }
+  #fountain-preview-gutter {
+    grid-row: 1/-1;
+    grid-column: 2;
+    cursor: col-resize;
+    display: flex;
+    justify-content: center;
+  }
+  #fountain-preview-gutter > div {
+    width: 1px;
+    height: 100%;
+    background: rgba(128, 128, 128, 0.45);
+  }
+  #fountain-preview-pane { min-width: 0; }
+  `,
+);
+
+// ---------- preview pane ----------
+const PANE_ID = "fountain-preview-pane";
+const GUTTER_ID = "fountain-preview-gutter";
+let paneOpen = false;
+let splitter: ReturnType<typeof Split> | undefined;
+
+// Global cursor/selection lock while dragging the divider.
+const draggingStyle = document.createElement("style");
+draggingStyle.textContent =
+  "* { cursor: col-resize !important; user-select: none !important; }";
+draggingStyle.disabled = true;
+document.head.appendChild(draggingStyle);
+
+function getPane(): HTMLElement | null {
+  return document.getElementById(PANE_ID);
+}
+
+function getGutter(): HTMLElement | null {
+  return document.getElementById(GUTTER_ID);
+}
+
+function renderPreview(view: EditorView): void {
+  const pane = getPane();
+  if (!pane) return;
+  // Safe: renderFountainHtml HTML-escapes every text run and builds
+  // tags only from a fixed class whitelist — no raw input is injected.
+  const keepScroll = pane.scrollTop;
+  pane.innerHTML = renderFountainHtml(view.state.doc.toString());
+  pane.scrollTop = keepScroll;
+}
+
+function openPane(view: EditorView): void {
+  let pane = getPane();
+  if (!pane) {
+    const gutter = document.createElement("div");
+    gutter.id = GUTTER_ID;
+    gutter.appendChild(document.createElement("div"));
+    document.body.appendChild(gutter);
+
+    pane = document.createElement("div");
+    pane.id = PANE_ID;
+    pane.className = "fp-preview-pane";
+    document.body.appendChild(pane);
+  }
+  pane.style.display = "";
+  document.body.classList.add("fountain-preview-open");
+  renderPreview(view);
+  paneOpen = true;
+
+  // Draggable divider — split-grid, the same library MarkEdit-preview
+  // uses for its side-by-side mode. track 1 = the 5px gutter column.
+  const gutter = getGutter();
+  if (gutter && !splitter) {
+    splitter = Split({
+      columnGutters: [{ track: 1, element: gutter }],
+      minSize: 150,
+      onDragStart: () => {
+        draggingStyle.disabled = false;
+      },
+      onDragEnd: () => {
+        draggingStyle.disabled = true;
+      },
+    });
+  }
+}
+
+function closePane(): void {
+  splitter?.destroy();
+  splitter = undefined;
+  getGutter()?.remove();
+  getPane()?.remove();
+  document.body.classList.remove("fountain-preview-open");
+  paneOpen = false;
+}
+
+// Re-render the pane when the document changes while it's open.
+const previewRefresh = EditorView.updateListener.of((update: ViewUpdate) => {
+  if (paneOpen && update.docChanged) {
+    renderPreview(update.view);
+  }
 });
 
-// "Fountain" submenu in MarkEdit's Extensions menu.
+// ---------- activation ----------
+const isFountain = (): boolean => detectFountain(MarkEdit.editorView.state.doc.toString());
+
+MarkEdit.onEditorReady(() => {
+  MarkEdit.addExtension([modeField, fountainHighlight(), fountainKeymap(), previewRefresh]);
+});
+
+// ---------- menu ----------
 MarkEdit.addMainMenuItem({
   title: "Fountain",
   children: [
+    {
+      title: "Show Preview Pane",
+      key: "p",
+      modifiers: ["Shift", "Command"],
+      action: () => {
+        const view = MarkEdit.editorView;
+        if (isFountain() && paneOpen) closePane();
+        else if (isFountain()) openPane(view);
+      },
+      state: () => ({
+        isEnabled: isFountain(),
+        isSelected: paneOpen,
+      }),
+    },
+    { separator: true },
     {
       title: "Live Preview Edit",
       key: "p",

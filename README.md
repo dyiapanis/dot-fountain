@@ -24,6 +24,8 @@ https://raw.githubusercontent.com/dyiapanis/fountain-cm6/main/hosts/markedit/dis
 ## What you get
 
 - **Element highlighting** — bold scene headings, indented dialogue and character cues, italic parentheticals, right-aligned transitions, tinted `[[notes]]`, `== synopses ==`, `~ lyrics`, sections, and a dashed page-break rule under `> > >`
+- **Preview pane** — Extensions → Fountain → *Show Preview Pane* (⇧⌘P): a live screenplay page beside the editor, rendered to the [AWG *Suggested Script Layout*](https://www.awg.com.au) geometry (A4, Courier 12, dialogue 3.4cm in, cues 5.4cm), with a **draggable divider** (uses [split-grid](https://github.com/nathancahill/split-grid), the same library as MarkEdit's own side-by-side preview). Renders the title page too: `Title/Credit/Author/Source` centered, contact keys in the lower-left block
+- **Live Preview Edit / Fountain (markdown)** — editor-mode toggle: screenplay styling in the editor surface, or raw source with everything off
 - **Inline emphasis** — `*italic*`, `**bold**`, `***bold italic***`, `_*underline*`_ and combinations, styled as you type
 - **Scene navigation** — Extensions → Fountain → *Go to Next/Previous Scene*, also bound to Option+↓ / Option+↑
 - **Script stats** — Extensions → Fountain → *Script Stats…* (scenes, word count, dialogue words)
@@ -36,7 +38,8 @@ Want different colors? The stylesheet reads CSS variables (`--mf-scene`, `--mf-d
 The project is split into two layers:
 
 ```
-src/     pure CodeMirror 6 — classify.ts, spans.ts, highlight.ts, commands.ts, style.css
+src/     pure CodeMirror 6 — classify.ts, spans.ts, highlight.ts, commands.ts,
+         mode.ts, render.ts (+render-title.ts, render-escape.ts), style.css, preview.css
 hosts/   thin per-host glue — markedit/ (built), web/ (planned)
 ```
 

@@ -4,3 +4,8 @@ dist/
 *.log
 .DS_Store
 .scratch/
+
+# The built artifact ships at the repo root on purpose — shallow
+# Install URL: .../dyiapanis/dot-fountain/main/dot-fountain.js
+# (no ignore pattern matches it; comment documents the intent)
+!.gitignore

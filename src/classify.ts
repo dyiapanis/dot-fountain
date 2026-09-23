@@ -55,6 +55,10 @@ const SCENE_PREFIX = /^(INT\.?\/EXT\.?|I\/E|EST|INT|EXT)(?=[.\s])/i;
 const FORCED_SCENE = /^\.(?![.\s])[A-Za-z0-9]/;
 const CHARACTER_BODY = /^[A-Z][A-Z0-9 .'\u2019()\-]*$/;
 const TRANSITION_TO = /TO:[ \t]*$/;
+// Named transitions real scripts use (pattern set adopted from
+// dethbird/fountain-writer, Apache-2.0 — broader than bare "TO:").
+const TRANSITION_NAMED =
+  /^(?:FADE(?: IN| OUT| TO BLACK)?[:.]|CUT TO BLACK\.|SMASH CUT TO:|MATCH CUT TO:|DISSOLVE TO:|WIPE TO:|BACK TO:)/i;
 const PAGE_BREAK = /^={3,}$/; // three or more, alone
 const SECTION = /^(#{1,})[ \t]+\S/;
 const SYNOPSIS = /^=(?!=)[ \t]*\S/;
@@ -103,7 +107,8 @@ function classifyOutside(t: string, prevBlank: boolean, nextBlank: boolean): Cla
   }
   if (
     prevBlank && nextBlank &&
-    TRANSITION_TO.test(t) && /[A-Z]/.test(t) && t === t.toUpperCase()
+    (TRANSITION_TO.test(t) || TRANSITION_NAMED.test(t)) &&
+    /[A-Z]/.test(t) && t === t.toUpperCase()
   ) {
     return { type: "transition" };
   }

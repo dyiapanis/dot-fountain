@@ -1,4 +1,6 @@
 node_modules/
 dist/
+!hosts/markedit/dist/
 *.log
 .DS_Store
+.scratch/

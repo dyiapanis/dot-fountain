@@ -16,7 +16,7 @@ import {
   type ViewUpdate,
   WidgetType,
 } from "@codemirror/view";
-import { classify } from "./classify";
+import { classify, detectFountain } from "./classify";
 import { spansFor } from "./spans";
 
 /** Line class names: `mf-scene`, `mf-character`, … */
@@ -60,8 +60,10 @@ function markDeco(cls: string): Decoration {
   return d;
 }
 
-export function fountainDecorations(view: EditorView): DecorationSet {
-  const lines = classify(view.state.doc.toString());
+export function fountainDecorations(view: EditorView, force = false): DecorationSet {
+  const text = view.state.doc.toString();
+  if (!force && !detectFountain(text)) return Decoration.none;
+  const lines = classify(text);
   const builder = new RangeSetBuilder<Decoration>();
   let lastPos = -1;
   const add = (from: number, to: number, deco: Decoration) => {
@@ -92,17 +94,22 @@ export function fountainDecorations(view: EditorView): DecorationSet {
  * Fountain highlighting extension: colors scene headings, character
  * cues, dialogue, parentheticals, transitions, notes, sections,
  * synopses, lyrics, page breaks and inline emphasis.
+ *
+ * By default the plugin auto-detects whether the current document is
+ * Fountain and stays silent on ordinary markdown. Pass `{ force: true }`
+ * to decorate unconditionally (e.g. a dedicated .fountain playground).
  */
-export function fountainHighlight(): Extension {
+export function fountainHighlight(opts: { force?: boolean } = {}): Extension {
+  const force = opts.force ?? false;
   return ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
       constructor(view: EditorView) {
-        this.decorations = fountainDecorations(view);
+        this.decorations = fountainDecorations(view, force);
       }
       update(update: ViewUpdate) {
         if (update.docChanged || update.viewportChanged) {
-          this.decorations = fountainDecorations(update.view);
+          this.decorations = fountainDecorations(update.view, force);
         }
       }
     },

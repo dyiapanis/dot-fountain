@@ -1,0 +1,118 @@
+/* fountain-cm6 — screenplay preview pane.  Prefix: fp-
+   AWG "Suggested Script Layout" geometry (A4, Courier 12pt):
+   - page margins: 3.9cm left, 2.5cm top/bottom/right
+   - dialogue: 3.4cm in from left AND right of the text column
+   - character cue: 5.4cm in
+   - parenthetical: 4.4cm in
+   - scene heading: bold, numbered on the left
+   - font: Courier 12pt (10 cpi → 1ch = 0.254cm) */
+
+.fp-preview-pane {
+  --fp-page-width: 21cm;
+  --fp-m-left: 3.9cm;
+  --fp-m-top: 2.5cm;
+  --fp-m-bottom: 2.5cm;
+  --fp-m-right: 2.5cm;
+  --fp-column: calc(var(--fp-page-width) - var(--fp-m-left) - var(--fp-m-right));
+  --fp-dialogue-indent: 3.4cm;
+  --fp-dialogue-right: 3.4cm;
+  --fp-character-indent: 5.4cm;
+  --fp-parenthetical-indent: 4.4cm;
+
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12pt;
+  line-height: 1.35em;
+  color: var(--fp-ink, #111);
+  background: var(--fp-paper, #faf9f6);
+  overflow: auto;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+/* The "sheet": an A4-width column inside the pane, so the preview
+   always looks like a page no matter the window width. */
+.fp-script {
+  width: var(--fp-page-width);
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--fp-m-top) var(--fp-m-right) var(--fp-m-bottom) var(--fp-m-left);
+  box-sizing: border-box;
+}
+
+.fp-script p {
+  margin: 0 0 0.35em 0;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* Scene heading — numbered on the left, bold, uppercase. */
+.fp-scene {
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-top: 1.6em;
+}
+.fp-scene .fp-sceneno { margin-right: 0.5ch; }
+
+/* Character cue — 5.4cm from column left, uppercase. */
+.fp-character {
+  text-transform: uppercase;
+  margin: 0.9em 0 0 0;
+  padding-left: calc(var(--fp-character-indent) - var(--fp-m-left));
+}
+
+/* Dialogue — 3.4cm from left and right of the text column. */
+.fp-dialogue {
+  padding-left: calc(var(--fp-dialogue-indent) - var(--fp-m-left) + 1.5cm);
+  padding-right: var(--fp-dialogue-right);
+}
+.fp-parenthetical {
+  font-style: italic;
+  padding-left: calc(var(--fp-parenthetical-indent) - var(--fp-m-left) + 1.5cm);
+  padding-right: var(--fp-dialogue-right);
+}
+
+/* Transitions — flush right of column. */
+.fp-transition {
+  text-align: right;
+  text-transform: uppercase;
+  margin-top: 0.9em;
+}
+
+/* Dual dialogue / centered text. */
+.fp-dual { text-align: center; }
+.fp-centered { text-align: center; }
+
+/* Sections — outline markers, visually quiet. */
+.fp-section { font-weight: 600; }
+.fp-synopsis, .fp-note, .fp-boneyard { font-style: italic; opacity: 0.55; }
+.fp-lyric { font-style: italic; text-align: center; }
+
+/* Page-break rule. */
+.fp-pagebreak {
+  border: none;
+  border-top: 2px solid #111;
+  margin: 2em 0;
+}
+
+/* Title page. */
+.fp-titlepage {
+  min-height: calc(29.7cm - var(--fp-m-top) - var(--fp-m-bottom));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 2em;
+}
+.fp-title-center { text-transform: uppercase; }
+.fp-title-center:first-child { font-weight: 700; }
+.fp-title-lower {
+  position: absolute;
+  bottom: var(--fp-m-bottom);
+  left: var(--fp-m-left);
+}
+.fp-title-lower p { margin: 0; }
+
+/* Span classes reused from the editor layer. */
+span.fp-note { font-style: italic; opacity: 0.6; }
+span.fp-sceneno { font-weight: normal; }

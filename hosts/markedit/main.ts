@@ -1,5 +1,5 @@
-// MarkEdit host glue for fountain-cm6.
-// Builds to ONE self-contained file: markedit-fountain.js
+// MarkEdit host glue for dot-fountain.
+// Builds to ONE self-contained file: dot-fountain.js
 // Install: ~/Library/Containers/app.cyan.markedit/Data/Documents/scripts/
 //
 // This is the ONLY file that imports markedit-api. Everything else is
@@ -35,14 +35,14 @@ function appendStyleOnce(id: string, css: string): void {
   document.head.appendChild(style);
 }
 
-appendStyleOnce("fountain-cm6-style", editorCss);
-appendStyleOnce("fountain-cm6-preview-style", previewCss);
+appendStyleOnce("dot-fountain-style", editorCss);
+appendStyleOnce("dot-fountain-preview-style", previewCss);
 
 // Host layout: when the pane is open, body becomes a 2-column grid —
 // the editor's own container falls into column 1 (same technique as
 // MarkEdit-preview's side-by-side mode), our pane into column 2.
 appendStyleOnce(
-  "fountain-cm6-pane-style",
+  "dot-fountain-pane-style",
   `
   #fountain-split {
     display: grid;
@@ -104,7 +104,7 @@ function renderPreview(view: EditorView): void {
 }
 
 function openPane(view: EditorView): void {
-  console.log("[fountain-cm6] openPane: start");
+  console.log("[dot-fountain] openPane: start");
   // Deterministic split: wrap MarkEdit's own #editor in our container so
   // the grid has exactly three known children — no dependence on what
   // else lives in <body> (verified: CoreEditor/index.html has
@@ -112,7 +112,7 @@ function openPane(view: EditorView): void {
   let split = document.getElementById("fountain-split");
   if (!split) {
     const editorHost = document.getElementById("editor");
-    console.log("[fountain-cm6] openPane: editorHost?", !!editorHost);
+    console.log("[dot-fountain] openPane: editorHost?", !!editorHost);
     if (!editorHost) return;
 
     split = document.createElement("div");
@@ -138,10 +138,10 @@ function openPane(view: EditorView): void {
     view.dispatch({ effects: setMode.of("source") });
   }
 
-  console.log("[fountain-cm6] openPane: rendering");
+  console.log("[dot-fountain] openPane: rendering");
   renderPreview(view);
   paneOpen = true;
-  console.log("[fountain-cm6] openPane: split-grid init");
+  console.log("[dot-fountain] openPane: split-grid init");
 
   // Draggable divider — split-grid, the same library MarkEdit-preview
   // uses for its side-by-side mode. track 1 = the 5px gutter column.
@@ -158,7 +158,7 @@ function openPane(view: EditorView): void {
       },
     });
   }
-  console.log("[fountain-cm6] openPane: done");
+  console.log("[dot-fountain] openPane: done");
 }
 
 function closePane(): void {

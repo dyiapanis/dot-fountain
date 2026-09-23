@@ -1,5 +1,5 @@
 {
-  "name": "fountain-cm6",
+  "name": "dot-fountain",
   "version": "0.1.0",
   "description": "Fountain screenplay syntax support as a CodeMirror 6 extension — highlighting, typography and navigation for fountain.io markup. Host-agnostic core with glue for MarkEdit (and more).",
   "type": "module",
@@ -7,7 +7,7 @@
   "author": "Demetri <dyiapanis>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dyiapanis/fountain-cm6.git"
+    "url": "git+https://github.com/dyiapanis/dot-fountain.git"
   },
   "keywords": [
     "fountain",

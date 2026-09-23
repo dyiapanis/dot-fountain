@@ -1,20 +1,20 @@
-# fountain-cm6
+# dot-fountain
 
 > [Fountain](https://fountain.io) screenplay syntax for [CodeMirror 6](https://codemirror.net) — live element highlighting, screenplay typography, and scene navigation — with ready-made host glue for [MarkEdit](https://github.com/MarkEdit-app/MarkEdit) on macOS.
 
-Fountain is plain text: write screenplays in any editor, everywhere. `fountain-cm6` makes a minimal editor *understand* them — scene headings, character cues, dialogue, parentheticals, transitions, dual dialogue, notes, synopses, sections, lyrics and page breaks — recognized per the [official syntax spec](https://fountain.io/syntax/) and styled live as you type. **The text itself is never modified.**
+Fountain is plain text: write screenplays in any editor, everywhere. `dot-fountain` makes a minimal editor *understand* them — scene headings, character cues, dialogue, parentheticals, transitions, dual dialogue, notes, synopses, sections, lyrics and page breaks — recognized per the [official syntax spec](https://fountain.io/syntax/) and styled live as you type. **The text itself is never modified.**
 
 ## Installing (MarkEdit, macOS)
 
 **Via "Install from URL"** (MarkEdit → Settings → Extensions):
 
 ```
-https://raw.githubusercontent.com/dyiapanis/fountain-cm6/main/hosts/markedit/dist/markedit-fountain.js
+https://raw.githubusercontent.com/dyiapanis/dot-fountain/main/hosts/markedit/dist/dot-fountain.js
 ```
 
 **Or manually:**
 
-1. Download [`markedit-fountain.js`](hosts/markedit/dist/markedit-fountain.js)
+1. Download [`dot-fountain.js`](hosts/markedit/dist/dot-fountain.js)
 2. Place it in:
    ```
    ~/Library/Containers/app.cyan.markedit/Data/Documents/scripts/
@@ -48,13 +48,13 @@ hosts/   thin per-host glue — markedit/ (built), web/ (planned)
 - **`classify.ts`** — line-oriented classifier implementing the Fountain spec: forced headings (`.INT. X`), `!` action escapes, scene numbers (`#12A#`), dual dialogue (`=`), multi-line `[[notes]]`, `== synopses ==`, `~ lyrics`, title-page keys, and document auto-detection.
 - **`spans.ts`** — inline spans with lookaround guards so emphasis runs (`**, *` between two) never mis-pair.
 - **`highlight.ts`** — a single `ViewPlugin` producing line + mark + widget decorations. Fountain scripts are small (a 120-page screenplay is ~50 KB); a full re-classify per change is cheap and keeps context-sensitive rules exact.
-- **`hosts/markedit/`** — ~60 lines of glue building to one self-contained `markedit-fountain.js`, sharing MarkEdit's own CodeMirror modules.
+- **`hosts/markedit/`** — ~60 lines of glue building to one self-contained `dot-fountain.js`, sharing MarkEdit's own CodeMirror modules.
 
 ## Development
 
 ```sh
-git clone https://github.com/dyiapanis/fountain-cm6
-cd fountain-cm6
+git clone https://github.com/dyiapanis/dot-fountain
+cd dot-fountain
 npm install
 npm test          # vitest — fixtures taken from the fountain.io/syntax examples
 npm run typecheck

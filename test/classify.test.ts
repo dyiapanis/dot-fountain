@@ -202,7 +202,7 @@ describe("structural elements", () => {
 
 describe("title page", () => {
   it("title-page keys are not misclassified as action garbage in body", () => {
-    const doc = `Title: THE DEMO\nCredit: written by\nAuthor: fountain-cm6\n\n===\n\nINT. X - DAY\n`;
+    const doc = `Title: THE DEMO\nCredit: written by\nAuthor: dot-fountain\n\n===\n\nINT. X - DAY\n`;
     const lines = classify(doc);
     // The title-page block is consumed by parseTitlePage in render;
     // classifier just sees text — but it must NOT flip into dialogue

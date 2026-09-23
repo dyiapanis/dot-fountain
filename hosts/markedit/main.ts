@@ -6,7 +6,7 @@
 // portable CM6 (works in Obsidian, web, tests).
 
 import { MarkEdit } from "markedit-api";
-import { fountainHighlight } from "../../src";
+import { detectFountain, fountainHighlight, getMode, modeField, setMode } from "../../src";
 import { fountainKeymap, fountainStats, gotoNextScene, gotoPrevScene } from "../../src/commands";
 import css from "../../src/style.css?inline";
 
@@ -16,18 +16,46 @@ style.id = "fountain-cm6-style";
 if (!document.getElementById(style.id)) document.head.appendChild(style);
 style.textContent = css;
 
-// Activate Fountain mode when the editor becomes available. The plugin
-// self-gates: it only decorates documents that look like Fountain, so
-// ordinary markdown files are untouched.
+// Is the current document Fountain? (Both mode items disable on plain
+// markdown, since the toggle would have no visible effect there.)
+const isFountain = (): boolean => detectFountain(MarkEdit.editorView.state.doc.toString());
 
+// Activate Fountain support when the editor becomes available. The plugin
+// self-gates: it only decorates documents that look like Fountain, and the
+// mode field lets the user flip styling off entirely.
 MarkEdit.onEditorReady(() => {
-  MarkEdit.addExtension([fountainHighlight(), fountainKeymap()]);
+  MarkEdit.addExtension([modeField, fountainHighlight(), fountainKeymap()]);
 });
 
 // "Fountain" submenu in MarkEdit's Extensions menu.
 MarkEdit.addMainMenuItem({
   title: "Fountain",
   children: [
+    {
+      title: "Live Preview Edit",
+      key: "p",
+      modifiers: ["Option", "Shift"],
+      action: () => {
+        MarkEdit.editorView.dispatch({ effects: setMode.of("preview") });
+      },
+      state: () => ({
+        isSelected: isFountain() && getMode(MarkEdit.editorView.state) === "preview",
+        isEnabled: isFountain(),
+      }),
+    },
+    {
+      title: "Fountain (markdown)",
+      key: "p",
+      modifiers: ["Option", "Command"],
+      action: () => {
+        MarkEdit.editorView.dispatch({ effects: setMode.of("source") });
+      },
+      state: () => ({
+        isSelected: isFountain() && getMode(MarkEdit.editorView.state) === "source",
+        isEnabled: isFountain(),
+      }),
+    },
+    { separator: true },
     {
       title: "Go to Next Scene",
       key: "→",
@@ -42,7 +70,7 @@ MarkEdit.addMainMenuItem({
       modifiers: ["Option"],
       action: () => {
         gotoPrevScene(MarkEdit.editorView);
-        },
+      },
     },
     { separator: true },
     {

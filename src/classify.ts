@@ -1,22 +1,36 @@
 // fountain-cm6 — core classifier for Fountain (fountain.io) syntax.
 // Pure logic: no CodeMirror or host imports, unit-testable anywhere.
 //
-// Element detection follows the official spec at https://fountain.io/syntax/
-// (reviewed September 2026). The golden rule: "make it look like a
-// screenplay" — detection is line/paragraph-block oriented.
+// Element rules per the official spec at https://fountain.io/syntax/
+// (reviewed September 2026):
+//   scene         INT/EXT/EST/I/E… prefix, or forced with a leading `.`;
+//                 optional trailing scene number `#12A#`
+//   action        anything else; forced with `!`; centered with `>text<`
+//   character     uppercase line, blank before, text after; forced with
+//                 `@`; dual-dialogue second cue ends with `^`
+//   parenthetical `(...)` inside a dialogue block
+//   dialogue      lines after a character, until a blank line
+//   transition    uppercase ending in TO:, blank-surrounded; forced with `>`
+//   section       ATX `#`/`##`/`###` — writing tool, ignored in output
+//   synopsis      `= text` — ignored in output
+//   note          `[[...]]` — ignored in output
+//   boneyard      `/* ... */` — ignored in output
+//   lyric         `~` prefix
+//   page break    `===` (three or more, alone on the line)
 
 export type LineType =
   | "blank"
   | "action"
   | "scene"
   | "character"
-  | "dual_separator"
   | "parenthetical"
   | "dialogue"
   | "transition"
+  | "centered"
   | "section"
   | "synopsis"
   | "note"
+  | "boneyard"
   | "page_break"
   | "lyric";
 
@@ -27,38 +41,92 @@ export interface LineInfo {
   to: number;
   text: string;
   type: LineType;
+  /** dual-dialogue cue (trailing `^` per spec) */
+  dual?: boolean;
+  /** section nesting level: `#` = 1, `##` = 2, … */
+  level?: number;
+  /** explicit scene number extracted from `#12A#` */
+  sceneNumber?: string;
 }
 
 // Scene-heading prefixes per spec, followed by a dot or a space.
-// Longest alternatives first. Case-insensitive.
-const SCENE_PREFIX = /^(INT\.?\/EXT\.|INT\/EXT|I\/E|I\.E|EST|INT|EXT)(?=[.\s])/i;
+const SCENE_PREFIX = /^(INT\.?\/EXT\.?|I\/E|EST|INT|EXT)(?=[.\s])/i;
 // Forced scene heading: exactly one leading period, then alphanumeric.
 const FORCED_SCENE = /^\.(?![.\s])[A-Za-z0-9]/;
-// Character cues may contain uppercase letters, digits and screenplay
-// punctuation, and must contain at least one letter. Extensions like
-// (V.O.), (O.S.), (CONT'D) are common.
 const CHARACTER_BODY = /^[A-Z][A-Z0-9 .'\u2019()\-]*$/;
 const TRANSITION_TO = /TO:[ \t]*$/;
-const DUAL_SEPARATOR = /^=[ \t]*$/; // standalone '=' line
-const PAGE_BREAK = /^[<>]{3,}[ \t]*$/; // '>>>' / '<<<' (3 or more)
-const SECTION = /^={3,}[ \t]*\S/;
-const SYNOPSIS = /^={2}[^=]/;
-const LYRIC_BLOCK_START = /^%[^%]*$/; // opens until a closing %
-const LYRIC_INLINE = /^%[^%]+%[ \t]*$/;
+const PAGE_BREAK = /^={3,}$/; // three or more, alone
+const SECTION = /^(#{1,})[ \t]+\S/;
+const SYNOPSIS = /^=(?!=)[ \t]*\S/;
+const LYRIC = /^~[ \t]*\S/;
+const CENTERED = /^>.+<$/;
+const SCENE_NUMBER = /#([^#\s]+)#[ \t]*$/;
+const DUAL_MARK = /\^[ \t]*$/;
 
 const isBlank = (s: string) => s.trim() === "";
 
 function isCharacterBody(trimmed: string): boolean {
-  if (TRANSITION_TO.test(trimmed)) return false;
-  if (trimmed.toUpperCase() !== trimmed) return false;
-  if (!/[A-Z]/.test(trimmed)) return false;
-  return CHARACTER_BODY.test(trimmed);
+  const body = trimmed.replace(DUAL_MARK, "").trim();
+  if (TRANSITION_TO.test(body)) return false;
+  if (!/[A-Z]/.test(body)) return false;
+  return CHARACTER_BODY.test(body);
+}
+
+interface Classified {
+  type: LineType;
+  dual?: boolean;
+  level?: number;
+  sceneNumber?: string;
+}
+
+function classifyOutside(t: string, prevBlank: boolean, nextBlank: boolean): Classified {
+  if (t.startsWith("/*")) return { type: "boneyard" };
+  if (t.startsWith("[[")) return { type: "note" };
+  if (PAGE_BREAK.test(t)) return { type: "page_break" };
+
+  const sec = SECTION.exec(t);
+  if (sec) return { type: "section", level: sec[1].length };
+
+  if (SYNOPSIS.test(t)) return { type: "synopsis" };
+  if (LYRIC.test(t)) return { type: "lyric" };
+  if (CENTERED.test(t)) return { type: "centered" };
+
+  if (t.startsWith("!")) return { type: "action" }; // forced action
+  if (t.startsWith("@")) return { type: "character", dual: DUAL_MARK.test(t) };
+  if (FORCED_SCENE.test(t)) {
+    return { type: "scene", sceneNumber: SCENE_NUMBER.exec(t)?.[1] };
+  }
+  if (t.startsWith(">")) return { type: "transition" }; // forced transition
+
+  if (prevBlank && nextBlank && SCENE_PREFIX.test(t)) {
+    return { type: "scene", sceneNumber: SCENE_NUMBER.exec(t)?.[1] };
+  }
+  if (
+    prevBlank && nextBlank &&
+    TRANSITION_TO.test(t) && /[A-Z]/.test(t) && t === t.toUpperCase()
+  ) {
+    return { type: "transition" };
+  }
+  if (prevBlank && !nextBlank && isCharacterBody(t)) {
+    return { type: "character", dual: DUAL_MARK.test(t) };
+  }
+  return { type: "action" };
+}
+
+// Forced/block constructs break out of a dialogue block (matches the
+// reference parsers: a forced element is honored anywhere).
+function isBlockConstruct(t: string): boolean {
+  return (
+    FORCED_SCENE.test(t) ||
+    PAGE_BREAK.test(t) ||
+    /^[>!@~#]|\/\*|\[\[/.test(t)
+  );
 }
 
 /**
  * Classify every physical line of a Fountain document.
- * State machine: dialogue blocks, lyric blocks and multi-line notes
- * depend on preceding context, exactly like the reference parsers.
+ * State machine: dialogue blocks and multi-line notes/boneyards depend
+ * on preceding context, exactly like the reference parsers.
  */
 export function classify(doc: string): LineInfo[] {
   const raw = doc.split(/\r\n|\r|\n/);
@@ -67,9 +135,7 @@ export function classify(doc: string): LineInfo[] {
   let offset = 0;
   let inDialogue = false;
   let inNote = false;
-  let inLyric = false;
-  let afterDual = false; // '=' separator seen: next line is the 2nd speaker
-  let dialogueRecently = false; // last non-blank line was dialogue-ish
+  let inBoneyard = false;
 
   for (let i = 0; i < raw.length; i++) {
     const line = raw[i];
@@ -78,82 +144,68 @@ export function classify(doc: string): LineInfo[] {
     offset = to + 1;
 
     const t = line.trim();
-    const prevBlank = i === 0 || isBlank(raw[i - 1]);
+    const prevT = i === 0 ? "" : raw[i - 1].trim();
+    // `===`, `*/`, `]]` act as structural separators: an element after
+    // them is still "preceded by a blank" for spec purposes.
+    const prevBlank =
+      i === 0 || isBlank(prevT) ||
+      PAGE_BREAK.test(prevT) || prevT === "*/" || prevT === "]]";
     const nextBlank = i === raw.length - 1 || isBlank(raw[i + 1]);
 
     let type: LineType = "action";
+    let dual: boolean | undefined;
+    let level: number | undefined;
+    let sceneNumber: string | undefined;
 
-    if (inNote) {
+    if (inBoneyard) {
+      type = "boneyard";
+      if (t.includes("*/")) inBoneyard = false;
+    } else if (inNote) {
       type = "note";
       if (t.includes("]]")) inNote = false;
-    } else if (inLyric) {
-      type = "lyric";
-      if (t.includes("%")) inLyric = false;
     } else if (t === "") {
       type = "blank";
       inDialogue = false;
-    } else if (afterDual) {
-      // second speaker of dual dialogue — cue regardless of case rules
-      type = "character";
-      afterDual = false;
-      inDialogue = true;
-    } else if (DUAL_SEPARATOR.test(t) && dialogueRecently) {
-      // '=' between the two Character elements, no blank lines required
-      type = "dual_separator";
-      afterDual = true;
+    } else if (t.startsWith("/*") && !t.slice(2).includes("*/")) {
+      type = "boneyard"; // multi-line boneyard opener
+      inBoneyard = true;
+    } else if (t.startsWith("[[") && !t.slice(2).includes("]]")) {
+      type = "note"; // multi-line note opener
+      inNote = true;
     } else if (inDialogue) {
       if (/^\(.*\)$/.test(t)) {
         type = "parenthetical";
-      } else if (
-        FORCED_SCENE.test(t) ||
-        t.startsWith(">") ||
-        t.startsWith("!") ||
-        t.startsWith("@") ||
-        t.startsWith("==") ||
-        PAGE_BREAK.test(t)
-      ) {
-        // block-level constructs break out of the dialogue block
-        inDialogue = false;
-        type = classifyOutside(t, prevBlank, nextBlank);
+      } else if (isBlockConstruct(t)) {
+        const r = classifyOutside(t, prevBlank, nextBlank);
+        type = r.type;
+        dual = r.dual;
+        level = r.level;
+        sceneNumber = r.sceneNumber;
+        inDialogue = type === "character";
       } else {
         type = "dialogue";
       }
     } else {
-      type = classifyOutside(t, prevBlank, nextBlank);
+      const r = classifyOutside(t, prevBlank, nextBlank);
+      type = r.type;
+      dual = r.dual;
+      level = r.level;
+      sceneNumber = r.sceneNumber;
       if (type === "character") inDialogue = true;
-      if (type === "note" && t.startsWith("[[") && !t.endsWith("]]")) inNote = true;
-      if (type === "lyric" && LYRIC_BLOCK_START.test(t)) inLyric = true;
     }
 
-    if (type !== "blank") {
-      dialogueRecently =
-        type === "character" ||
-        type === "dialogue" ||
-        type === "parenthetical" ||
-        type === "dual_separator";
-    }
-
-    out.push({ from, to, text: line, type });
+    out.push({
+      from,
+      to,
+      text: line,
+      type,
+      ...(dual && { dual }),
+      ...(level && { level }),
+      ...(sceneNumber && { sceneNumber }),
+    });
   }
 
   return out;
-}
-
-// Classification of a non-blank line outside dialogue blocks.
-function classifyOutside(t: string, prevBlank: boolean, nextBlank: boolean): LineType {
-  if (t.startsWith("[[")) return "note";
-  if (SECTION.test(t)) return "section";
-  if (SYNOPSIS.test(t)) return "synopsis";
-  if (PAGE_BREAK.test(t)) return "page_break";
-  if (LYRIC_INLINE.test(t) || LYRIC_BLOCK_START.test(t)) return "lyric";
-  if (t.startsWith("!")) return "action"; // forced action
-  if (t.startsWith("@")) return "character"; // forced character
-  if (FORCED_SCENE.test(t)) return "scene"; // forced scene heading
-  if (t.startsWith(">")) return "transition"; // forced transition
-  if (prevBlank && SCENE_PREFIX.test(t)) return "scene";
-  if (prevBlank && TRANSITION_TO.test(t) && t.toUpperCase() === t) return "transition";
-  if (prevBlank && !nextBlank && isCharacterBody(t)) return "character";
-  return "action";
 }
 
 /**
@@ -166,7 +218,6 @@ export function detectFountain(input: string | LineInfo[]): boolean {
   for (const l of lines) {
     switch (l.type) {
       case "scene":
-      case "dual_separator":
       case "page_break":
       case "synopsis":
       case "lyric":

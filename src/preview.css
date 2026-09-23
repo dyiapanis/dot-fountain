@@ -46,13 +46,19 @@
   overflow-wrap: break-word;
 }
 
-/* Scene heading — numbered on the left, bold, uppercase. */
+/* Scene heading — numbered left AND right (bold), uppercase. */
 .fp-scene {
   font-weight: 700;
   text-transform: uppercase;
   margin-top: 1.6em;
+  position: relative;
 }
 .fp-scene .fp-sceneno { margin-right: 0.5ch; }
+.fp-scene .fp-sceneno-r {
+  position: absolute;
+  right: 0;
+  margin-left: 0.5ch;
+}
 
 /* Character cue — 5.4cm from column left, uppercase. */
 .fp-character {

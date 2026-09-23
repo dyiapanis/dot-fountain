@@ -18,6 +18,7 @@ import {
 } from "@codemirror/view";
 import { classify, detectFountain } from "./classify";
 import { spansFor } from "./spans";
+import { getMode, setMode } from "./mode";
 
 /** Line class names: `mf-scene`, `mf-character`, … */
 export const lineClass = (type: string) => `mf-${type}`;
@@ -63,6 +64,7 @@ function markDeco(cls: string): Decoration {
 export function fountainDecorations(view: EditorView, force = false): DecorationSet {
   const text = view.state.doc.toString();
   if (!force && !detectFountain(text)) return Decoration.none;
+  if (getMode(view.state) === "source") return Decoration.none;
   const lines = classify(text);
   const builder = new RangeSetBuilder<Decoration>();
   let lastPos = -1;
@@ -108,7 +110,7 @@ export function fountainHighlight(opts: { force?: boolean } = {}): Extension {
         this.decorations = fountainDecorations(view, force);
       }
       update(update: ViewUpdate) {
-        if (update.docChanged || update.viewportChanged) {
+        if (update.docChanged || update.viewportChanged || update.transactions.some(tr => tr.effects.some(e => e.is(setMode)))) {
           this.decorations = fountainDecorations(update.view, force);
         }
       }

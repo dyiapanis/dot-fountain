@@ -18,6 +18,7 @@ import {
   getMode,
   modeField,
   setMode,
+  type FountainMode,
 } from "../../src";
 import { fountainKeymap, fountainStats, gotoNextScene, gotoPrevScene } from "../../src/commands";
 import { renderFountainHtml } from "../../src/render";
@@ -43,25 +44,25 @@ appendStyleOnce("fountain-cm6-preview-style", previewCss);
 appendStyleOnce(
   "fountain-cm6-pane-style",
   `
-  body.fountain-preview-open {
+  #fountain-split {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 5px minmax(0, 1.2fr);
     height: 100vh;
   }
-  body.fountain-preview-open > :first-child { min-width: 0; }
-  #fountain-preview-gutter {
+  #fountain-split > #editor { min-width: 0; }
+  #fountain-split > #fountain-preview-gutter {
     grid-row: 1/-1;
     grid-column: 2;
     cursor: col-resize;
     display: flex;
     justify-content: center;
   }
-  #fountain-preview-gutter > div {
+  #fountain-split > #fountain-preview-gutter > div {
     width: 1px;
     height: 100%;
     background: rgba(128, 128, 128, 0.45);
   }
-  #fountain-preview-pane { min-width: 0; }
+  #fountain-split > #fountain-preview-pane { min-width: 0; }
   `,
 );
 
@@ -70,6 +71,9 @@ const PANE_ID = "fountain-preview-pane";
 const GUTTER_ID = "fountain-preview-gutter";
 let paneOpen = false;
 let splitter: ReturnType<typeof Split> | undefined;
+// Editor mode to restore when the pane closes (the pane displaces
+// Live Preview Edit, since the pane itself is the formatted view).
+let modeBeforePane: FountainMode | null = null;
 
 // Global cursor/selection lock while dragging the divider.
 const draggingStyle = document.createElement("style");
@@ -97,20 +101,38 @@ function renderPreview(view: EditorView): void {
 }
 
 function openPane(view: EditorView): void {
-  let pane = getPane();
-  if (!pane) {
+  // Deterministic split: wrap MarkEdit's own #editor in our container so
+  // the grid has exactly three known children — no dependence on what
+  // else lives in <body> (verified: CoreEditor/index.html has
+  // <body><div id="editor">).
+  let split = document.getElementById("fountain-split");
+  if (!split) {
+    const editorHost = document.getElementById("editor");
+    if (!editorHost) return;
+
+    split = document.createElement("div");
+    split.id = "fountain-split";
+    editorHost.parentNode?.insertBefore(split, editorHost);
+    split.appendChild(editorHost);
+
     const gutter = document.createElement("div");
     gutter.id = GUTTER_ID;
     gutter.appendChild(document.createElement("div"));
-    document.body.appendChild(gutter);
+    split.appendChild(gutter);
 
-    pane = document.createElement("div");
+    const pane = document.createElement("div");
     pane.id = PANE_ID;
     pane.className = "fp-preview-pane";
-    document.body.appendChild(pane);
+    split.appendChild(pane);
   }
-  pane.style.display = "";
-  document.body.classList.add("fountain-preview-open");
+
+  // The editor side becomes raw markdown — the pane is the formatted
+  // view. Remember the current mode to restore on close.
+  modeBeforePane = getMode(view.state);
+  if (modeBeforePane === "preview") {
+    view.dispatch({ effects: setMode.of("source") });
+  }
+
   renderPreview(view);
   paneOpen = true;
 
@@ -134,9 +156,24 @@ function openPane(view: EditorView): void {
 function closePane(): void {
   splitter?.destroy();
   splitter = undefined;
-  getGutter()?.remove();
-  getPane()?.remove();
-  document.body.classList.remove("fountain-preview-open");
+
+  const split = document.getElementById("fountain-split");
+  if (split) {
+    // Unwrap: put #editor back where MarkEdit expects it.
+    const editorHost = document.getElementById("editor");
+    if (editorHost) {
+      split.parentNode?.insertBefore(editorHost, split);
+    }
+    split.remove();
+  }
+
+  // Restore the editor mode the pane displaced (only if the user didn't
+  // change modes manually while the pane was open).
+  const view = MarkEdit.editorView;
+  if (view && getMode(view.state) === "source" && modeBeforePane === "preview") {
+    view.dispatch({ effects: setMode.of("preview") });
+  }
+
   paneOpen = false;
 }
 

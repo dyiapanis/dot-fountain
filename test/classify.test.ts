@@ -139,6 +139,13 @@ describe("transitions", () => {
       "blank",
     ]);
   });
+
+  it("named transitions (SMASH CUT TO:, DISSOLVE TO:, FADE IN:)", () => {
+    for (const tr of ["SMASH CUT TO:", "DISSOLVE TO:", "FADE IN:", "BACK TO:"]) {
+      const ts = types(`\nAction.\n\n${tr}\n\nINT. X - DAY\n`);
+      expect(ts[3]).toBe("transition");
+    }
+  });
 });
 
 // Page breaks, sections, synopses, notes, boneyard ------------------------

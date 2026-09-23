@@ -6,7 +6,10 @@ Fountain is plain text: write screenplays in any editor, everywhere. `dot-founta
 
 ## Installing (MarkEdit, macOS)
 
-**Via "Install from URL"** (MarkEdit → Settings → Extensions):
+**Two channels:**
+
+- **Stable (recommended):** download the latest release — [github.com/dyiapanis/dot-fountain/releases](https://github.com/dyiapanis/dot-fountain/releases) — assets are pinned and never change.
+- **Development:** the raw `main` build, updated with every push, may be unstable:
 
 ```
 https://raw.githubusercontent.com/dyiapanis/dot-fountain/main/dot-fountain.js
@@ -72,8 +75,9 @@ Issues and PRs welcome. The classifier is the heart of the project — if a line
 - [x] Core classifier + inline spans, spec-tested
 - [x] CM6 decoration layer + screenplay typography
 - [x] MarkEdit host glue, menu commands, script stats
-- [ ] v0.1 release → submit to the [MarkEdit extensions registry](https://github.com/MarkEdit-app/extensions)
-- [ ] v0.2: HTML preview pane (Fountain.js), page-count estimation, dual-dialogue columns
+- [x] v0.1.0 released (tag + pinned asset) → [registry PR #44](https://github.com/MarkEdit-app/extensions/pull/44)
+- [x] Preview pane (AWG layout, title page, draggable divider)
+- [ ] v0.2: scroll-synced pane, page-count estimation, dual-dialogue columns
 - [ ] Later: browser playground (`hosts/web`), Obsidian plugin
 
 ## Credits & license

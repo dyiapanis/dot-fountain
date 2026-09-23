@@ -1,78 +1,89 @@
-/* fountain-cm6 — screenplay typography.  Prefix: mf-  (no host imports).
-   Colors: element classes expose WHAT each line IS. Themes decide HOW it
-   looks; this sheet supplies sensible defaults that hosts may override. */
+/* fountain-cm6 — screenplay page rendering.  Prefix: mf-
+   Applied only in "Live Preview Edit" mode (decorations exist only
+   then); "Fountain (markdown)" shows raw source.
 
-/* Scene headings — bold, with a hint of scene-number color. */
+   Geometry follows the classic screenplay grid. Courier 12pt has ~10
+   characters per inch, so 1ch ≈ 0.1". Indents are measured from the
+   text column's left edge (industry / Final Draft-style defaults):
+
+     scene heading / action    flush left
+     dialogue                  1.0" (10ch) in, ~3.5" measure
+     parenthetical             1.6" (16ch) in, ~2.6" measure
+     character cue             2.2" (22ch) in
+     transition                flush right
+
+   Defaults read like a printed script: black text, layout does the
+   talking. Every knob is a CSS variable — override indents, measures,
+   or colors in MarkEdit's custom CSS. */
+
+/* Scene headings — bold, uppercase, a beat of air above the slug. */
 .cm-line.mf-scene {
-  font-weight: 700;
-  color: var(--mf-scene, #b48ead);
+  color: var(--mf-scene, inherit);
+  font-weight: var(--mf-scene-weight, 700);
+  text-transform: uppercase;
+  padding-top: 0.4em;
 }
 
-/* Character cues — uppercase already; give them presence + slight indent. */
+/* Character cues — 2.2" from column left, uppercase. */
 .cm-line.mf-character {
-  color: var(--mf-character, #ebcb8b);
-  padding-left: calc(2ch * var(--mf-unit, 1));
+  color: var(--mf-character, inherit);
+  padding-left: var(--mf-ind-character, 22ch);
+  text-transform: uppercase;
 }
 
-/* Dialogue — narrower measure, softer color. */
+/* Dialogue — 1.0" in, ~3.5" measure. The measure holds even in wide
+   windows (padding scales with column width); it degrades gracefully
+   in narrow ones. */
 .cm-line.mf-dialogue {
-  color: var(--mf-dialogue, #d8dee9);
-  padding-left: calc(1ch * var(--mf-unit, 1));
+  color: var(--mf-dialogue, inherit);
+  padding-left: var(--mf-ind-dialogue, 10ch);
+  padding-right: max(0px, calc(100% - var(--mf-measure-dialogue, 45ch)));
 }
 
-/* Parentheticals — muted. */
-.cm-line.mf-parenthetical,
-span.mf-parenthetical {
-  color: var(--mf-parenthetical, #7b88a1);
+/* Parentheticals — 1.6" in, narrower measure. */
+.cm-line.mf-parenthetical {
+  color: var(--mf-parenthetical, inherit);
   font-style: italic;
+  padding-left: var(--mf-ind-parenthetical, 16ch);
+  padding-right: max(0px, calc(100% - var(--mf-measure-parenthetical, 42ch)));
 }
+span.mf-parenthetical { font-style: italic; }
 
-/* Transitions — right-aligned feel via color + tracking. */
+/* Transitions — flush right, uppercase, tracked. */
 .cm-line.mf-transition {
-  color: var(--mf-transition, #bf616a);
-  letter-spacing: 0.08em;
+  color: var(--mf-transition, inherit);
   text-align: right;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
-/* Dual dialogue separator. */
-.cm-line.mf-dual_separator {
-  color: var(--mf-dual, #88c0d0);
-  text-align: center;
-}
-
-/* Centered / title-page keys. */
-.cm-line.mf-centered {
-  text-align: center;
-}
+/* Dual dialogue separator and > centered < text. */
+.cm-line.mf-dual_separator { color: var(--mf-dual, inherit); text-align: center; }
+.cm-line.mf-centered { text-align: center; }
 
 /* Sections — outline headers. */
-.cm-line.mf-section { color: var(--mf-section, #81a1c1); }
-.cm-line.mf-section1 { color: var(--mf-section, #81a1c1); }
-.cm-line.mf-section2 { color: var(--mf-section, #88c0d0); }
-.cm-line.mf-section3 { color: var(--mf-section, #8fbcbb); }
+.cm-line.mf-section,
+.cm-line.mf-section1 { color: var(--mf-section, inherit); font-weight: 600; }
+.cm-line.mf-section2 { color: var(--mf-section, inherit); font-weight: 500; }
+.cm-line.mf-section3 { color: var(--mf-section, inherit); font-style: italic; }
 
-/* Synopses, notes, boneyard — visually 'non-script'. */
-.cm-line.mf-synopsis, span.mf-synopsis { color: var(--mf-synopsis, #a3be8c); }
+/* Non-script annotations stay visually quiet. */
+.cm-line.mf-synopsis, span.mf-synopsis { color: var(--mf-synopsis, inherit); font-style: italic; }
 .cm-line.mf-note, span.mf-note {
-  color: var(--mf-note, #d08770);
+  color: var(--mf-note, inherit);
   font-style: italic;
-  background: rgba(208, 135, 112, 0.08);
+  opacity: 0.65;
 }
-.cm-line.mf-boneyard, span.mf-boneyard { color: var(--mf-note, #d08770); }
+.cm-line.mf-boneyard, span.mf-boneyard { color: var(--mf-boneyard, inherit); opacity: 0.6; }
+.cm-line.mf-lyric { color: var(--mf-lyric, inherit); font-style: italic; }
 
-/* Lyrics. */
-.cm-line.mf-lyric {
-  color: var(--mf-lyric, #ebcb8b);
-  font-style: italic;
-}
-
-/* Page break marker. */
+/* Page break rule. */
 .mf-pagebreak {
-  border-top: 1px dashed rgba(127, 127, 127, 0.4);
-  margin: 0.25em 0;
+  border-top: 1px dashed rgba(127, 127, 127, 0.6);
+  margin: 0.24em 0;
 }
 
-/* Inline spans. */
+/* Inline emphasis spans. */
 span.mf-bold { font-weight: 700; }
 span.mf-italic { font-style: italic; }
 span.mf-bolditalic { font-weight: 700; font-style: italic; }

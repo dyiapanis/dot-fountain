@@ -30,14 +30,17 @@
   min-width: 0;
 }
 
-/* The "sheet": an A4-width column inside the pane, so the preview
-   always looks like a page no matter the window width. */
+/* The "sheet": an A4-width column inside the pane. Paper look: white
+   sheet with a soft shadow on the gray pane background. */
 .fp-script {
   width: var(--fp-page-width);
   max-width: 100%;
   margin: 0 auto;
   padding: var(--fp-m-top) var(--fp-m-right) var(--fp-m-bottom) var(--fp-m-left);
   box-sizing: border-box;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.18);
+  min-height: 100%;
 }
 
 .fp-script p {
@@ -101,21 +104,28 @@
   margin: 2em 0;
 }
 
-/* Title page. */
+/* Title page. In a LIVE pane we don't emulate a full A4 sheet — a
+   29.7cm block pushed the whole script body below the fold (the
+   "formatting is broken" report). Compact centered block instead;
+   full-page fidelity belongs to export/print later. */
 .fp-titlepage {
-  min-height: calc(29.7cm - var(--fp-m-top) - var(--fp-m-bottom));
+  min-height: 45vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  position: relative; /* anchors .fp-title-lower */
+  padding-bottom: 3em;
   margin-bottom: 2em;
 }
 .fp-title-center { text-transform: uppercase; }
+.fp-title-title { font-weight: 700; text-transform: uppercase; }
 .fp-title-center:first-child { font-weight: 700; }
 .fp-title-lower {
   position: absolute;
-  bottom: var(--fp-m-bottom);
-  left: var(--fp-m-left);
+  bottom: 0.5em;
+  left: 0;
+  text-align: left;
 }
 .fp-title-lower p { margin: 0; }
 

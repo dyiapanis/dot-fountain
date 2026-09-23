@@ -46,7 +46,10 @@ appendStyleOnce(
   `
   #fountain-split {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 5px minmax(0, 1.2fr);
+    /* NOTE: split-grid parses each track strictly (px | fr | % | auto).
+       minmax() breaks its parser -> "n is null" crash, dead divider.
+       Plain fr tracks behave identically here. */
+    grid-template-columns: 1fr 5px 1.2fr;
     height: 100vh;
   }
   #fountain-split > #editor { min-width: 0; }
@@ -101,6 +104,7 @@ function renderPreview(view: EditorView): void {
 }
 
 function openPane(view: EditorView): void {
+  console.log("[fountain-cm6] openPane: start");
   // Deterministic split: wrap MarkEdit's own #editor in our container so
   // the grid has exactly three known children — no dependence on what
   // else lives in <body> (verified: CoreEditor/index.html has
@@ -108,6 +112,7 @@ function openPane(view: EditorView): void {
   let split = document.getElementById("fountain-split");
   if (!split) {
     const editorHost = document.getElementById("editor");
+    console.log("[fountain-cm6] openPane: editorHost?", !!editorHost);
     if (!editorHost) return;
 
     split = document.createElement("div");
@@ -133,8 +138,10 @@ function openPane(view: EditorView): void {
     view.dispatch({ effects: setMode.of("source") });
   }
 
+  console.log("[fountain-cm6] openPane: rendering");
   renderPreview(view);
   paneOpen = true;
+  console.log("[fountain-cm6] openPane: split-grid init");
 
   // Draggable divider — split-grid, the same library MarkEdit-preview
   // uses for its side-by-side mode. track 1 = the 5px gutter column.
@@ -151,6 +158,7 @@ function openPane(view: EditorView): void {
       },
     });
   }
+  console.log("[fountain-cm6] openPane: done");
 }
 
 function closePane(): void {

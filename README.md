@@ -9,7 +9,7 @@ Fountain is plain text: write screenplays in any editor, everywhere. `dot-founta
 **Via "Install from URL"** (MarkEdit → Settings → Extensions):
 
 ```
-https://raw.githubusercontent.com/dyiapanis/dot-fountain/main/hosts/markedit/dist/dot-fountain.js
+https://raw.githubusercontent.com/dyiapanis/dot-fountain/main/dot-fountain.js
 ```
 
 **Or manually:**

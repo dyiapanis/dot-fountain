@@ -51,6 +51,12 @@ function lineDeco(type: string): Decoration | null {
   return d;
 }
 
+/** Section depth (# = 1, ## = 2, ###+ = 3) for size-scaled styling. */
+function sectionDepth(text: string): number {
+  const m = /^[ \t]*(#+)/.exec(text);
+  return m ? Math.min(m[1].length, 3) : 1;
+}
+
 const spanDecos = new Map<string, Decoration>();
 function markDeco(cls: string): Decoration {
   let d = spanDecos.get(cls);
@@ -79,13 +85,19 @@ export function fountainDecorations(view: EditorView, force = false): Decoration
   };
 
   for (const line of lines) {
-    const ld = lineDeco(line.type);
+    // Sections get depth-scaled classes (mf-section1/2/3).
+    const ld =
+      line.type === "section"
+        ? lineDeco(`section${sectionDepth(line.text)}`)
+        : lineDeco(line.type);
     if (ld) add(line.from, line.from, ld);
     if (line.type === "page_break") {
       add(line.to, line.to, Decoration.widget({ widget: new PageBreakWidget(), side: 1 }));
     }
     for (const s of spansFor(line)) {
-      if (s.from === s.to) continue;
+      // Scene numbers stay in the preview pane only — the editor keeps
+      // the source clean (user preference).
+      if (s.from === s.to || s.cls === "sceneno") continue;
       add(s.from, s.to, markDeco(s.cls));
     }
   }

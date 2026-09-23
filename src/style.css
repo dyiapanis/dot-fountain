@@ -16,6 +16,23 @@
    talking. Every knob is a CSS variable — override indents, measures,
    or colors in MarkEdit's custom CSS. */
 
+/* Screenplay page width — the editor column becomes a fixed-width
+   "page" so dialogue/parenthetical indents read against real page
+   geometry instead of the window edge.
+
+   Gated with :has() rather than a JS-toggled root class: CM6's theme
+   module reconciles the root class list on every update and wipes
+   manually-added classes. :has() applies exactly when Fountain line
+   decorations exist — i.e. Fountain doc + preview mode — and never
+   for ordinary markdown or source mode. WebKit/WKWebView and Firefox
+   both support :has(). */
+.cm-editor:has(.cm-line.mf-scene) .cm-content,
+.cm-editor:has(.cm-line.mf-character) .cm-content {
+  margin-left: auto !important;
+  margin-right: auto !important;
+  max-width: var(--mf-page-width, 60ch) !important;
+}
+
 /* Scene headings — bold, uppercase, a beat of air above the slug. */
 .cm-line.mf-scene {
   color: var(--mf-scene, inherit);
@@ -24,11 +41,12 @@
   padding-top: 0.4em;
 }
 
-/* Character cues — 2.2" from column left, uppercase. */
+/* Character cues — 2.2" from column left, uppercase, bold. */
 .cm-line.mf-character {
   color: var(--mf-character, inherit);
   padding-left: var(--mf-ind-character, 22ch);
   text-transform: uppercase;
+  font-weight: 700;
 }
 
 /* Dialogue — 1.0" in, ~3.5" measure. The measure holds even in wide
@@ -61,21 +79,41 @@ span.mf-parenthetical { font-style: italic; }
 .cm-line.mf-dual_separator { color: var(--mf-dual, inherit); text-align: center; }
 .cm-line.mf-centered { text-align: center; }
 
-/* Sections — outline headers. */
-.cm-line.mf-section,
-.cm-line.mf-section1 { color: var(--mf-section, inherit); font-weight: 600; }
-.cm-line.mf-section2 { color: var(--mf-section, inherit); font-weight: 500; }
-.cm-line.mf-section3 { color: var(--mf-section, inherit); font-style: italic; }
-
-/* Non-script annotations stay visually quiet. */
-.cm-line.mf-synopsis, span.mf-synopsis { color: var(--mf-synopsis, inherit); font-style: italic; }
-.cm-line.mf-note, span.mf-note {
-  color: var(--mf-note, inherit);
+/* Structural "invisibles" (sections / synopses) — grey, size-scaled by
+   depth: # big, ## smaller, ### smallest. They are writer scaffolding,
+   not script content, so they stay visually recessive. */
+.cm-line.mf-section1 { color: var(--mf-section, #9a9a9a); font-size: 1.35em; }
+.cm-line.mf-section2 { color: var(--mf-section, #9a9a9a); font-size: 1.15em; }
+.cm-line.mf-section3 { color: var(--mf-section, #9a9a9a); font-size: 1.0em; }
+.cm-line.mf-synopsis, span.mf-synopsis {
+  color: var(--mf-synopsis, #9a9a9a);
   font-style: italic;
-  opacity: 0.65;
+  font-size: 0.9em;
+}
+.cm-line.mf-note, span.mf-note {
+  color: var(--mf-note, #9a9a9a);
+  font-style: italic;
+  opacity: 0.75;
 }
 .cm-line.mf-boneyard, span.mf-boneyard { color: var(--mf-boneyard, inherit); opacity: 0.6; }
 .cm-line.mf-lyric { color: var(--mf-lyric, inherit); font-style: italic; }
+
+/* Page-break lines: hide the literal === and show only the rule.
+   The line keeps its layout box (cursor can still land on it). */
+.cm-line.mf-page_break {
+  color: transparent;
+  user-select: none;
+  background-image: linear-gradient(
+    to right,
+    transparent 0,
+    rgba(127, 127, 127, 0.55) 0,
+    rgba(127, 127, 127, 0.55) 100%,
+    transparent 100%
+  );
+  background-size: 100% 1px;
+  background-position: 0 60%;
+  background-repeat: no-repeat;
+}
 
 /* Page break rule. */
 .mf-pagebreak {

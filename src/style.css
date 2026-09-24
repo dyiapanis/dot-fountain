@@ -81,10 +81,15 @@ span.mf-parenthetical { font-style: italic; }
 
 /* Structural "invisibles" (sections / synopses) — grey, size-scaled by
    depth: # big, ## smaller, ### smallest. They are writer scaffolding,
-   not script content, so they stay visually recessive. */
-.cm-line.mf-section1 { color: var(--mf-section, #9a9a9a); font-size: 1.35em; }
-.cm-line.mf-section2 { color: var(--mf-section, #9a9a9a); font-size: 1.15em; }
-.cm-line.mf-section3 { color: var(--mf-section, #9a9a9a); font-size: 1.0em; }
+   not script content, so they stay visually recessive.
+
+   !important + .cm-line prefix: MarkEdit's own markdown heading styles
+   (cm-md-header / cm-md-headingN dynamic font-size sheet, created
+   AFTER ours) would otherwise win the cascade for # lines, breaking
+   the grey colour and the depth scaling. Fountain sections are OURS. */
+.cm-line.mf-section1 { color: var(--mf-section, #9a9a9a) !important; font-size: 1.35em !important; font-weight: 400 !important; }
+.cm-line.mf-section2 { color: var(--mf-section, #9a9a9a) !important; font-size: 1.15em !important; font-weight: 400 !important; }
+.cm-line.mf-section3 { color: var(--mf-section, #9a9a9a) !important; font-size: 1.0em !important; font-weight: 400 !important; }
 .cm-line.mf-synopsis, span.mf-synopsis {
   color: var(--mf-synopsis, #9a9a9a);
   font-style: italic;

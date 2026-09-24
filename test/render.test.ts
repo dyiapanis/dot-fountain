@@ -76,4 +76,18 @@ describe("renderFountainHtml", () => {
     const hostile = renderFountainHtml("EXT. X - DAY\n\n<script>alert(1)</script>\n");
     expect(hostile).not.toContain("<script>alert");
   });
+
+  it("strips emphasis markers in title and nests emphasis (Big Fish case)", () => {
+    const html = renderFountainHtml("Title: _Big Fish_\n\n====\n\nINT. A - DAY\n");
+    // underline rendered, markers NOT visible
+    expect(html).toContain("<u>Big Fish</u>");
+    expect(html).not.toContain("_Big Fish_");
+  });
+
+  it("nested emphasis inside underline renders both tags", () => {
+    const html = renderFountainHtml(
+      "Title: _an *italic* word_\n\n====\n\nINT. A - DAY\n",
+    );
+    expect(html).toContain("<u>an <i>italic</i> word</u>");
+  });
 });

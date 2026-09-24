@@ -1,14 +1,15 @@
-// Fountain outline model: the screenplay's structure as a flat list.
-// Sections (#, ##, ###) become depth 1-3 outline nodes; scenes nest
-// under them with the SAME numbering the preview pane uses
-// (auto 1,2,3…; explicit #N# overrides). Pure core — no host imports.
+// Fountain outline model: the screenplay's structure as a cascade tree.
+// Sections (#, ##, ###) are depth 1-3 tree nodes; scenes, synopses and
+// notes nest under them with indentation. Scene numbering matches the
+// preview pane exactly (auto 1,2,3…; explicit #N# overrides).
+// Pure core — no host imports.
 
 import { classify } from "./classify";
 import { parseTitlePage } from "./render-title";
 
 export interface OutlineItem {
-  kind: "section" | "scene";
-  depth: number;          // section: 1..3; scene: parent section depth + 1
+  kind: "section" | "scene" | "synopsis" | "note";
+  depth: number;          // section: 1..3; others: parent section depth + 1
   label: string;         // display text (marker chars stripped)
   sceneNumber: string;   // scenes only: "1", "2A", …
   from: number;          // absolute doc offset (click-to-jump target)
@@ -69,6 +70,26 @@ export function buildOutline(text: string): OutlineItem[] {
         depth: currentSectionDepth + 1,
         label: sceneLabel(line.text, isForcedScene(line.text)),
         sceneNumber: numbered,
+        from: line.from,
+        to: line.to,
+      });
+    } else if (line.type === "synopsis") {
+      // Cascade tree: synopses and notes nest under their section
+      // (or at top level before any section appears).
+      out.push({
+        kind: "synopsis",
+        depth: currentSectionDepth + 1,
+        label: line.text.replace(/^[ \t]*=?[ \t]*/, "").trim(),
+        sceneNumber: "",
+        from: line.from,
+        to: line.to,
+      });
+    } else if (line.type === "note") {
+      out.push({
+        kind: "note",
+        depth: currentSectionDepth + 1,
+        label: line.text.replace(/^[ \t]*\[\[|[ \t]*\]\][ \t]*$/g, "").trim(),
+        sceneNumber: "",
         from: line.from,
         to: line.to,
       });

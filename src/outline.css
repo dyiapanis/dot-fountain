@@ -57,8 +57,23 @@
 .fo-scene.fo-depth-3 { padding-left: 38px; }
 .fo-scene.fo-depth-4 { padding-left: 50px; }
 
+/* Synopses and notes: the most recessive tier — smallest, italic, mid
+   grey, indented under their section like the editor's invisibles. */
+.fo-synopsis,
+.fo-note {
+  color: rgb(154, 154, 154);
+  font-size: 11.5px;
+  font-style: italic;
+}
+.fo-synopsis.fo-depth-1 { padding-left: 14px; }
+.fo-synopsis.fo-depth-2, .fo-note.fo-depth-2 { padding-left: 26px; }
+.fo-synopsis.fo-depth-3, .fo-note.fo-depth-3 { padding-left: 38px; }
+.fo-synopsis.fo-depth-4, .fo-note.fo-depth-4 { padding-left: 50px; }
+
 .fo-section:hover,
-.fo-scene:hover {
+.fo-scene:hover,
+.fo-synopsis:hover,
+.fo-note:hover {
   background: rgba(0, 122, 255, 0.08);
 }
 

@@ -146,7 +146,7 @@ function renderOutline(view: EditorView): void {
     const cls =
       it.kind === "section"
         ? `fo-section fo-depth-${it.depth}`
-        : `fo-scene fo-depth-${it.depth}`;
+        : `fo-${it.kind} fo-depth-${it.depth}`;
     const num = it.kind === "scene" ? `<span class="fo-num">${escOutline(it.sceneNumber)}</span>` : "";
     parts.push(
       `<div class="${cls}" data-from="${it.from}" data-kind="${it.kind}">${num}` +
@@ -160,7 +160,8 @@ function renderOutline(view: EditorView): void {
       : `<div class="fo-empty">No sections or scenes yet.</div>`);
   pane.scrollTop = keepScroll;
 
-  // Click a node -> jump the cursor to that heading and scroll it into view.
+  // Click a node -> cursor jumps to that heading, scrolled to the TOP
+  // of the editor viewport.
   pane.querySelectorAll<HTMLElement>("[data-from]").forEach(el => {
     el.addEventListener("click", () => {
       const from = Number(el.dataset.from);
@@ -168,7 +169,7 @@ function renderOutline(view: EditorView): void {
         view.focus();
         view.dispatch({
           selection: { anchor: from },
-          scrollIntoView: true,
+          effects: EditorView.scrollIntoView(from, { y: "start" }),
         });
       }
     });

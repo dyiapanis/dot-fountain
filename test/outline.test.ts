@@ -65,6 +65,24 @@ describe("buildOutline", () => {
     }
   });
 
+  it("includes synopses and notes in the cascade, nested under sections", () => {
+    const items = buildOutline(
+      "# ACT\n\n= The hero arrives.\n\n[[Check schedule.]]\n\nINT. X - DAY\n",
+    );
+    expect(items.map(i => i.kind)).toEqual([
+      "section",
+      "synopsis",
+      "note",
+      "scene",
+    ]);
+    // synopsis/note nest at depth 2 under the # section
+    expect(items[1].depth).toBe(2);
+    expect(items[2].depth).toBe(2);
+    // markers stripped from labels
+    expect(items[1].label).toBe("The hero arrives.");
+    expect(items[2].label).toBe("Check schedule.");
+  });
+
   it("empty and title-only docs produce no items", () => {
     expect(buildOutline("")).toEqual([]);
     expect(buildOutline("Title: X\n\n===\n")).toEqual([]);

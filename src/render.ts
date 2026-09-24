@@ -1,8 +1,7 @@
 // Fountain → screenplay HTML renderer (portable core, no host imports).
-// Geometry per AWG "Suggested Script Layout": margins 3.9cm left /
-// 2.5cm others, Courier 12pt, dialogue 3.4cm in from both sides,
-// character cue 5.4cm, parenthetical 4.4cm. Scene numbers left AND
-// right (bold), per user preference / AWG layout.
+// Standard screenplay geometry: margins 3.9cm left / 2.5cm others,
+// Courier 12pt, dialogue 3.4cm in from both sides, character cue
+// 5.4cm, parenthetical 4.4cm. Scene numbers left AND right (bold).
 //
 // Spec-excluded elements (sections, synopses, notes, boneyard) do NOT
 // appear in formatted output — fountain.io: "ignored completely".

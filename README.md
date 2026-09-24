@@ -27,7 +27,7 @@ https://raw.githubusercontent.com/dyiapanis/dot-fountain/main/dot-fountain.js
 ## What you get
 
 - **Element highlighting** — bold scene headings, indented dialogue and character cues, italic parentheticals, right-aligned transitions, tinted `[[notes]]`, `== synopses ==`, `~ lyrics`, sections, and a dashed page-break rule under `> > >`
-- **Preview pane** — Extensions → Fountain → *Show Preview Pane* (⇧⌘P): a live screenplay page beside the editor, rendered to the [AWG *Suggested Script Layout*](https://www.awg.com.au) geometry (A4, Courier 12, dialogue 3.4cm in, cues 5.4cm), with a **draggable divider** (uses [split-grid](https://github.com/nathancahill/split-grid), the same library as MarkEdit's own side-by-side preview). Renders the title page too: `Title/Credit/Author/Source` centered, contact keys in the lower-left block
+- **Preview pane** — Extensions → Fountain → *Show Preview Pane* (⇧⌘P): a live screenplay page beside the editor, rendered to standard screenplay geometry (A4, Courier 12, dialogue 3.4cm in, cues 5.4cm), with a **draggable divider** (uses [split-grid](https://github.com/nathancahill/split-grid), the same library as MarkEdit's own side-by-side preview). Renders the title page too: `Title/Credit/Author/Source` centered, contact keys in the lower-left block
 - **Live Preview Edit / Fountain (markdown)** — editor-mode toggle: screenplay styling in the editor surface, or raw source with everything off
 - **Inline emphasis** — `*italic*`, `**bold**`, `***bold italic***`, `_*underline*`_ and combinations, styled as you type
 - **Scene navigation** — Extensions → Fountain → *Go to Next/Previous Scene*, also bound to Option+↓ / Option+↑
@@ -76,7 +76,7 @@ Issues and PRs welcome. The classifier is the heart of the project — if a line
 - [x] CM6 decoration layer + screenplay typography
 - [x] MarkEdit host glue, menu commands, script stats
 - [x] v0.1.0 released (tag + pinned asset) → [registry PR #44](https://github.com/MarkEdit-app/extensions/pull/44)
-- [x] Preview pane (AWG layout, title page, draggable divider)
+- [x] Preview pane (standard screenplay layout, title page, draggable divider)
 - [ ] v0.2: scroll-synced pane, page-count estimation, dual-dialogue columns
 - [ ] Later: browser playground (`hosts/web`), Obsidian plugin
 

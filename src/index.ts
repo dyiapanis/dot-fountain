@@ -9,3 +9,5 @@ export type { Span, SpanClass } from "./spans";
 export { fountainHighlight, fountainDecorations, lineClass, spanClass } from "./highlight";
 export { modeField, setMode, getMode, toggleMode } from "./mode";
 export type { FountainMode } from "./mode";
+export { buildOutline } from "./outline";
+export type { OutlineItem } from "./outline";

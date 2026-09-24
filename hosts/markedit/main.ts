@@ -9,6 +9,8 @@
 // - Live Preview Edit / Fountain (markdown) editor-mode toggle
 // - Preview pane on the right: a screenplay-formatted page,
 //   re-rendered live while typing (pattern from MarkEdit-preview).
+// - Outline pane on the left: screenplay structure (sections + scenes),
+//   click to navigate; refreshes live while typing.
 
 import { MarkEdit } from "markedit-api";
 import { EditorView, type ViewUpdate } from "@codemirror/view";
@@ -21,9 +23,11 @@ import {
   type FountainMode,
 } from "../../src";
 import { fountainKeymap, fountainStats, gotoNextScene, gotoPrevScene } from "../../src/commands";
+import { buildOutline } from "../../src/outline";
 import { renderFountainHtml } from "../../src/render";
 import editorCss from "../../src/style.css?inline";
 import previewCss from "../../src/preview.css?inline";
+import outlineCss from "../../src/outline.css?inline";
 import Split from "split-grid";
 
 // ---------- stylesheets ----------
@@ -37,6 +41,7 @@ function appendStyleOnce(id: string, css: string): void {
 
 appendStyleOnce("dot-fountain-style", editorCss);
 appendStyleOnce("dot-fountain-preview-style", previewCss);
+appendStyleOnce("dot-fountain-outline-style", outlineCss);
 
 // Host layout: when the pane is open, body becomes a 2-column grid —
 // the editor's own container falls into column 1 (same technique as
@@ -48,14 +53,29 @@ appendStyleOnce(
     display: grid;
     /* NOTE: split-grid parses each track strictly (px | fr | % | auto).
        minmax() breaks its parser -> "n is null" crash, dead divider.
-       Plain fr tracks behave identically here. */
-    grid-template-columns: 1fr 5px 1.2fr;
+       Plain fr tracks behave identically here.
+       Columns: [outline] [gutter] [editor] [gutter] [preview] — each
+       side pane adds its own columns; absent tracks collapse via
+       grid-template-columns set at open time. */
     height: 100vh;
   }
-  #fountain-split > #editor { min-width: 0; }
-  #fountain-split > #fountain-preview-gutter {
-    grid-row: 1/-1;
+  #fountain-split > #fountain-outline-pane { min-width: 0; overflow-y: auto; grid-column: 1; grid-row: 1; }
+  #fountain-split > #fountain-outline-gutter {
     grid-column: 2;
+    grid-row: 1;
+    cursor: col-resize;
+    display: flex;
+    justify-content: center;
+  }
+  #fountain-split > #fountain-outline-gutter > div {
+    width: 1px;
+    height: 100%;
+    background: rgba(128, 128, 128, 0.45);
+  }
+  #fountain-split > #editor { min-width: 0; grid-column: 3; grid-row: 1; }
+  #fountain-split > #fountain-preview-gutter {
+    grid-column: 4;
+    grid-row: 1;
     cursor: col-resize;
     display: flex;
     justify-content: center;
@@ -65,9 +85,153 @@ appendStyleOnce(
     height: 100%;
     background: rgba(128, 128, 128, 0.45);
   }
-  #fountain-split > #fountain-preview-pane { min-width: 0; }
+  #fountain-split > #fountain-preview-pane { min-width: 0; overflow-y: auto; grid-column: 5; grid-row: 1; }
   `,
 );
+
+// Track layout per pane combination. split-grid needs plain tracks.
+// Fixed five tracks: outline(1) gutter(2) editor(3) gutter(4) preview(5).
+// Absent panes' tracks collapse to 0 — the placed children are simply
+// absent, so the columns close over seamlessly.
+function splitColumns(): string {
+  const o = outlineOpen ? "240px" : "0px";
+  const og = outlineOpen ? "5px" : "0px";
+  const p = paneOpen ? "1.2fr" : "0px";
+  const pg = paneOpen ? "5px" : "0px";
+  return `${o} ${og} 1fr ${pg} ${p}`;
+}
+
+// ---------- outline pane ----------
+const OUTLINE_ID = "fountain-outline-pane";
+const OUTLINE_GUTTER_ID = "fountain-outline-gutter";
+let outlineOpen = false;
+let outlineSplitter: ReturnType<typeof Split> | undefined;
+
+// The split container, created on first pane open of either kind.
+// #editor gets wrapped so the grid children are exactly known.
+function ensureSplit(): HTMLElement | null {
+  let split = document.getElementById("fountain-split");
+  if (split) return split;
+  const editorHost = document.getElementById("editor");
+  if (!editorHost) return null;
+
+  split = document.createElement("div");
+  split.id = "fountain-split";
+  editorHost.parentNode?.insertBefore(split, editorHost);
+  split.appendChild(editorHost);
+  return split;
+}
+
+function applySplitColumns(): void {
+  const split = document.getElementById("fountain-split");
+  if (split) split.style.gridTemplateColumns = splitColumns();
+}
+
+/** Escape a string for safe innerHTML insertion into the outline. */
+function escOutline(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderOutline(view: EditorView): void {
+  const pane = document.getElementById(OUTLINE_ID);
+  if (!pane) return;
+  const items = buildOutline(view.state.doc.toString());
+  const keepScroll = pane.scrollTop;
+  const parts: string[] = [];
+  for (const it of items) {
+    const cls =
+      it.kind === "section"
+        ? `fo-section fo-depth-${it.depth}`
+        : `fo-scene fo-depth-${it.depth}`;
+    const num = it.kind === "scene" ? `<span class="fo-num">${escOutline(it.sceneNumber)}</span>` : "";
+    parts.push(
+      `<div class="${cls}" data-from="${it.from}" data-kind="${it.kind}">${num}` +
+      `<span class="fo-label">${escOutline(it.label)}</span></div>`,
+    );
+  }
+  pane.innerHTML =
+    `<div class="fo-title">Outline</div>` +
+    (parts.length
+      ? parts.join("")
+      : `<div class="fo-empty">No sections or scenes yet.</div>`);
+  pane.scrollTop = keepScroll;
+
+  // Click a node -> jump the cursor to that heading and scroll it into view.
+  pane.querySelectorAll<HTMLElement>("[data-from]").forEach(el => {
+    el.addEventListener("click", () => {
+      const from = Number(el.dataset.from);
+      if (Number.isFinite(from)) {
+        view.focus();
+        view.dispatch({
+          selection: { anchor: from },
+          scrollIntoView: true,
+        });
+      }
+    });
+  });
+}
+
+function openOutline(view: EditorView): void {
+  const split = ensureSplit();
+  if (!split) return;
+
+  let pane = document.getElementById(OUTLINE_ID);
+  if (!pane) {
+    pane = document.createElement("div");
+    pane.id = OUTLINE_ID;
+    pane.className = "fo-outline-pane";
+    // Outline is column 1: insert BEFORE the editor host.
+    split.insertBefore(pane, document.getElementById("editor"));
+  }
+  let gutter = document.getElementById(OUTLINE_GUTTER_ID);
+  if (!gutter) {
+    gutter = document.createElement("div");
+    gutter.id = OUTLINE_GUTTER_ID;
+    gutter.appendChild(document.createElement("div"));
+    split.insertBefore(gutter, document.getElementById("editor"));
+  }
+
+  renderOutline(view);
+  outlineOpen = true;
+  applySplitColumns();
+
+  if (gutter && !outlineSplitter) {
+    outlineSplitter = Split({
+      columnGutters: [{ track: 1, element: gutter }],
+      minSize: 140,
+      onDragStart: () => {
+        draggingStyle.disabled = false;
+      },
+      onDragEnd: () => {
+        draggingStyle.disabled = true;
+      },
+    });
+  }
+}
+
+function closeOutline(): void {
+  outlineSplitter?.destroy();
+  outlineSplitter = undefined;
+
+  document.getElementById(OUTLINE_ID)?.remove();
+  document.getElementById(OUTLINE_GUTTER_ID)?.remove();
+  outlineOpen = false;
+  applySplitColumns();
+
+  // If nothing is open anymore, unwrap #editor entirely.
+  if (!outlineOpen && !paneOpen) {
+    const split = document.getElementById("fountain-split");
+    const editorHost = document.getElementById("editor");
+    if (split && editorHost) {
+      split.parentNode?.insertBefore(editorHost, split);
+      split.remove();
+    }
+  }
+}
 
 // ---------- preview pane ----------
 const PANE_ID = "fountain-preview-pane";
@@ -106,29 +270,26 @@ function renderPreview(view: EditorView): void {
 function openPane(view: EditorView): void {
   console.log("[dot-fountain] openPane: start");
   // Deterministic split: wrap MarkEdit's own #editor in our container so
-  // the grid has exactly three known children — no dependence on what
-  // else lives in <body> (verified: CoreEditor/index.html has
+  // the grid has exactly known children — no dependence on what else
+  // lives in <body> (verified: CoreEditor/index.html has
   // <body><div id="editor">).
-  let split = document.getElementById("fountain-split");
-  if (!split) {
-    const editorHost = document.getElementById("editor");
-    console.log("[dot-fountain] openPane: editorHost?", !!editorHost);
-    if (!editorHost) return;
+  const split = ensureSplit();
+  if (!split) return;
 
-    split = document.createElement("div");
-    split.id = "fountain-split";
-    editorHost.parentNode?.insertBefore(split, editorHost);
-    split.appendChild(editorHost);
-
-    const gutter = document.createElement("div");
+  let pane = document.getElementById(PANE_ID);
+  if (!pane) {
+    pane = document.createElement("div");
+    pane.id = PANE_ID;
+    pane.className = "fp-preview-pane";
+    // Preview is the LAST column: append after the editor.
+    split.appendChild(pane);
+  }
+  let gutter = getGutter();
+  if (!gutter) {
+    gutter = document.createElement("div");
     gutter.id = GUTTER_ID;
     gutter.appendChild(document.createElement("div"));
     split.appendChild(gutter);
-
-    const pane = document.createElement("div");
-    pane.id = PANE_ID;
-    pane.className = "fp-preview-pane";
-    split.appendChild(pane);
   }
 
   // The editor side becomes raw markdown — the pane is the formatted
@@ -141,14 +302,16 @@ function openPane(view: EditorView): void {
   console.log("[dot-fountain] openPane: rendering");
   renderPreview(view);
   paneOpen = true;
+  applySplitColumns();
   console.log("[dot-fountain] openPane: split-grid init");
 
   // Draggable divider — split-grid, the same library MarkEdit-preview
-  // uses for its side-by-side mode. track 1 = the 5px gutter column.
-  const gutter = getGutter();
+  // uses for its side-by-side mode. track index of the preview gutter
+  // depends on whether the outline pane is also open.
+  const trackIdx = outlineOpen ? 3 : 1;
   if (gutter && !splitter) {
     splitter = Split({
-      columnGutters: [{ track: 1, element: gutter }],
+      columnGutters: [{ track: trackIdx, element: gutter }],
       minSize: 150,
       onDragStart: () => {
         draggingStyle.disabled = false;
@@ -165,14 +328,19 @@ function closePane(): void {
   splitter?.destroy();
   splitter = undefined;
 
-  const split = document.getElementById("fountain-split");
-  if (split) {
-    // Unwrap: put #editor back where MarkEdit expects it.
+  document.getElementById(PANE_ID)?.remove();
+  document.getElementById(GUTTER_ID)?.remove();
+  paneOpen = false;
+  applySplitColumns();
+
+  // If nothing is open anymore, unwrap #editor entirely.
+  if (!outlineOpen && !paneOpen) {
+    const split = document.getElementById("fountain-split");
     const editorHost = document.getElementById("editor");
-    if (editorHost) {
+    if (split && editorHost) {
       split.parentNode?.insertBefore(editorHost, split);
+      split.remove();
     }
-    split.remove();
   }
 
   // Restore the editor mode the pane displaced (only if the user didn't
@@ -185,10 +353,11 @@ function closePane(): void {
   paneOpen = false;
 }
 
-// Re-render the pane when the document changes while it's open.
+// Re-render the panes when the document changes while they're open.
 const previewRefresh = EditorView.updateListener.of((update: ViewUpdate) => {
-  if (paneOpen && update.docChanged) {
-    renderPreview(update.view);
+  if (update.docChanged) {
+    if (paneOpen) renderPreview(update.view);
+    if (outlineOpen) renderOutline(update.view);
   }
 });
 
@@ -203,6 +372,20 @@ MarkEdit.onEditorReady(() => {
 MarkEdit.addMainMenuItem({
   title: "Fountain",
   children: [
+    {
+      title: "Show Outline",
+      key: "o",
+      modifiers: ["Shift", "Command"],
+      action: () => {
+        const view = MarkEdit.editorView;
+        if (isFountain() && outlineOpen) closeOutline();
+        else if (isFountain()) openOutline(view);
+      },
+      state: () => ({
+        isEnabled: isFountain(),
+        isSelected: outlineOpen,
+      }),
+    },
     {
       title: "Show Preview Pane",
       key: "p",

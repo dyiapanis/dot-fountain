@@ -50,7 +50,7 @@ describe("renderFountainHtml", () => {
     expect(html).toContain("fp-sceneno-r");
   });
 
-  it("renders character cues uppercase with AWG indent class", () => {
+  it("renders character cues uppercase with indent class", () => {
     expect(html).toContain('class="fp-character"');
     expect(html).toContain("STEEL");
   });

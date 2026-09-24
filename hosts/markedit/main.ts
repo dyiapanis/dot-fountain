@@ -7,7 +7,7 @@
 //
 // Features:
 // - Live Preview Edit / Fountain (markdown) editor-mode toggle
-// - Preview pane on the right: an AWG-geometry screenplay page,
+// - Preview pane on the right: a screenplay-formatted page,
 //   re-rendered live while typing (pattern from MarkEdit-preview).
 
 import { MarkEdit } from "markedit-api";

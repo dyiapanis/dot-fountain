@@ -79,14 +79,23 @@ span.mf-parenthetical { font-style: italic; }
 .cm-line.mf-dual_separator { color: var(--mf-dual, inherit); text-align: center; }
 .cm-line.mf-centered { text-align: center; }
 
-/* Structural "invisibles" (sections / synopses) — grey, size-scaled by
-   depth: # big, ## smaller, ### smallest. They are writer scaffolding,
-   not script content, so they stay visually recessive.
+/* MarkEdit's own markdown machinery tags # lines with cm-md-header /
+   cm-md-headingN spans and styles THOSE SPANS directly (dynamic
+   font-size sheet + theme accent colour). Inner-span styles beat any
+   line-level declaration, even !important. The only way to win: force
+   every span inside our section lines to inherit from the line. */
+.cm-line.mf-section1 span,
+.cm-line.mf-section2 span,
+.cm-line.mf-section3 span {
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+}
 
-   !important + .cm-line prefix: MarkEdit's own markdown heading styles
-   (cm-md-header / cm-md-headingN dynamic font-size sheet, created
-   AFTER ours) would otherwise win the cascade for # lines, breaking
-   the grey colour and the depth scaling. Fountain sections are OURS. */
+/* Structural "invisibles" (sections): grey, size-scaled by depth
+   (# big, ## smaller, ### smallest). Writer scaffolding, not script
+   content — stays recessive. !important: MarkEdit's dynamic heading
+   sheets load after ours and would otherwise win the cascade. */
 .cm-line.mf-section1 { color: var(--mf-section, #9a9a9a) !important; font-size: 1.35em !important; font-weight: 400 !important; }
 .cm-line.mf-section2 { color: var(--mf-section, #9a9a9a) !important; font-size: 1.15em !important; font-weight: 400 !important; }
 .cm-line.mf-section3 { color: var(--mf-section, #9a9a9a) !important; font-size: 1.0em !important; font-weight: 400 !important; }

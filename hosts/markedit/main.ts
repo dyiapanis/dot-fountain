@@ -148,8 +148,11 @@ function renderOutline(view: EditorView): void {
         ? `fo-section fo-depth-${it.depth}`
         : `fo-${it.kind} fo-depth-${it.depth}`;
     const num = it.kind === "scene" ? `<span class="fo-num">${escOutline(it.sceneNumber)}</span>` : "";
+    const hash = it.kind === "section"
+      ? `<span class="fo-hash">${"#".repeat(it.depth)}</span>`
+      : "";
     parts.push(
-      `<div class="${cls}" data-from="${it.from}" data-kind="${it.kind}">${num}` +
+      `<div class="${cls}" data-from="${it.from}" data-kind="${it.kind}">${num}${hash}` +
       `<span class="fo-label">${escOutline(it.label)}</span></div>`,
     );
   }
@@ -371,7 +374,8 @@ MarkEdit.onEditorReady(() => {
 
 // ---------- menu ----------
 MarkEdit.addMainMenuItem({
-  title: "Fountain",
+  title: "Dot Fountain",
+  icon: "square.and.pencil",
   children: [
     {
       title: "Show Outline",

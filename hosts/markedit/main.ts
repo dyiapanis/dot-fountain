@@ -14,19 +14,11 @@
 
 import { MarkEdit } from "markedit-api";
 import { EditorView, type ViewUpdate } from "@codemirror/view";
-import {
-  detectFountain,
-  fountainHighlight,
-  getMode,
-  modeField,
-  setMode,
-  type FountainMode,
-} from "../../src";
+import { detectFountain, fountainHighlight, modeField } from "../../src";
 import { fountainKeymap, fountainStats, gotoNextScene, gotoPrevScene } from "../../src/commands";
 import { buildOutline } from "../../src/outline";
-import { renderFountainHtml } from "../../src/render";
+import { fountainToPdf } from "../../src/print";
 import editorCss from "../../src/style.css?inline";
-import previewCss from "../../src/preview.css?inline";
 import outlineCss from "../../src/outline.css?inline";
 import Split from "split-grid";
 
@@ -40,7 +32,6 @@ function appendStyleOnce(id: string, css: string): void {
 }
 
 appendStyleOnce("dot-fountain-style", editorCss);
-appendStyleOnce("dot-fountain-preview-style", previewCss);
 appendStyleOnce("dot-fountain-outline-style", outlineCss);
 
 // Host layout: when the pane is open, body becomes a 2-column grid —
@@ -93,13 +84,20 @@ appendStyleOnce(
 // Fixed five tracks: outline(1) gutter(2) editor(3) gutter(4) preview(5).
 // Absent panes' tracks collapse to 0 — the placed children are simply
 // absent, so the columns close over seamlessly.
+// Track layout: outline(1) gutter(2) editor(3) — the preview pane is
+// gone; tracks 4-5 stay collapsed. Absent panes' tracks collapse to 0.
 function splitColumns(): string {
   const o = outlineOpen ? "240px" : "0px";
   const og = outlineOpen ? "5px" : "0px";
-  const p = paneOpen ? "1.2fr" : "0px";
-  const pg = paneOpen ? "5px" : "0px";
-  return `${o} ${og} 1fr ${pg} ${p}`;
+  return `${o} ${og} 1fr 0px 0px`;
 }
+
+// Global cursor/selection lock while dragging the outline divider.
+const draggingStyle = document.createElement("style");
+draggingStyle.textContent =
+  "* { cursor: col-resize !important; user-select: none !important; }";
+draggingStyle.disabled = true;
+document.head.appendChild(draggingStyle);
 
 // ---------- outline pane ----------
 const OUTLINE_ID = "fountain-outline-pane";
@@ -227,7 +225,7 @@ function closeOutline(): void {
   applySplitColumns();
 
   // If nothing is open anymore, unwrap #editor entirely.
-  if (!outlineOpen && !paneOpen) {
+  if (!outlineOpen) {
     const split = document.getElementById("fountain-split");
     const editorHost = document.getElementById("editor");
     if (split && editorHost) {
@@ -237,131 +235,10 @@ function closeOutline(): void {
   }
 }
 
-// ---------- preview pane ----------
-const PANE_ID = "fountain-preview-pane";
-const GUTTER_ID = "fountain-preview-gutter";
-let paneOpen = false;
-let splitter: ReturnType<typeof Split> | undefined;
-// Editor mode to restore when the pane closes (the pane displaces
-// Live Preview Edit, since the pane itself is the formatted view).
-let modeBeforePane: FountainMode | null = null;
-
-// Global cursor/selection lock while dragging the divider.
-const draggingStyle = document.createElement("style");
-draggingStyle.textContent =
-  "* { cursor: col-resize !important; user-select: none !important; }";
-draggingStyle.disabled = true;
-document.head.appendChild(draggingStyle);
-
-function getPane(): HTMLElement | null {
-  return document.getElementById(PANE_ID);
-}
-
-function getGutter(): HTMLElement | null {
-  return document.getElementById(GUTTER_ID);
-}
-
-function renderPreview(view: EditorView): void {
-  const pane = getPane();
-  if (!pane) return;
-  // Safe: renderFountainHtml HTML-escapes every text run and builds
-  // tags only from a fixed class whitelist — no raw input is injected.
-  const keepScroll = pane.scrollTop;
-  pane.innerHTML = renderFountainHtml(view.state.doc.toString());
-  pane.scrollTop = keepScroll;
-}
-
-function openPane(view: EditorView): void {
-  console.log("[dot-fountain] openPane: start");
-  // Deterministic split: wrap MarkEdit's own #editor in our container so
-  // the grid has exactly known children — no dependence on what else
-  // lives in <body> (verified: CoreEditor/index.html has
-  // <body><div id="editor">).
-  const split = ensureSplit();
-  if (!split) return;
-
-  let pane = document.getElementById(PANE_ID);
-  if (!pane) {
-    pane = document.createElement("div");
-    pane.id = PANE_ID;
-    pane.className = "fp-preview-pane";
-    // Preview is the LAST column: append after the editor.
-    split.appendChild(pane);
-  }
-  let gutter = getGutter();
-  if (!gutter) {
-    gutter = document.createElement("div");
-    gutter.id = GUTTER_ID;
-    gutter.appendChild(document.createElement("div"));
-    split.appendChild(gutter);
-  }
-
-  // The editor side becomes raw markdown — the pane is the formatted
-  // view. Remember the current mode to restore on close.
-  modeBeforePane = getMode(view.state);
-  if (modeBeforePane === "preview") {
-    view.dispatch({ effects: setMode.of("source") });
-  }
-
-  console.log("[dot-fountain] openPane: rendering");
-  renderPreview(view);
-  paneOpen = true;
-  applySplitColumns();
-  console.log("[dot-fountain] openPane: split-grid init");
-
-  // Draggable divider — split-grid, the same library MarkEdit-preview
-  // uses for its side-by-side mode. track index of the preview gutter
-  // depends on whether the outline pane is also open.
-  const trackIdx = outlineOpen ? 3 : 1;
-  if (gutter && !splitter) {
-    splitter = Split({
-      columnGutters: [{ track: trackIdx, element: gutter }],
-      minSize: 150,
-      onDragStart: () => {
-        draggingStyle.disabled = false;
-      },
-      onDragEnd: () => {
-        draggingStyle.disabled = true;
-      },
-    });
-  }
-  console.log("[dot-fountain] openPane: done");
-}
-
-function closePane(): void {
-  splitter?.destroy();
-  splitter = undefined;
-
-  document.getElementById(PANE_ID)?.remove();
-  document.getElementById(GUTTER_ID)?.remove();
-  paneOpen = false;
-  applySplitColumns();
-
-  // If nothing is open anymore, unwrap #editor entirely.
-  if (!outlineOpen && !paneOpen) {
-    const split = document.getElementById("fountain-split");
-    const editorHost = document.getElementById("editor");
-    if (split && editorHost) {
-      split.parentNode?.insertBefore(editorHost, split);
-      split.remove();
-    }
-  }
-
-  // Restore the editor mode the pane displaced (only if the user didn't
-  // change modes manually while the pane was open).
-  const view = MarkEdit.editorView;
-  if (view && getMode(view.state) === "source" && modeBeforePane === "preview") {
-    view.dispatch({ effects: setMode.of("preview") });
-  }
-
-  paneOpen = false;
-}
-
-// Re-render the panes when the document changes while they're open.
+// Re-render the outline when the document changes while it's open.
 const previewRefresh = EditorView.updateListener.of((update: ViewUpdate) => {
-  if (update.docChanged) {
-    if (paneOpen) renderPreview(update.view);
-    if (outlineOpen) renderOutline(update.view);
+  if (update.docChanged && outlineOpen) {
+    renderOutline(update.view);
   }
 });
 
@@ -371,6 +248,43 @@ const isFountain = (): boolean => detectFountain(MarkEdit.editorView.state.doc.t
 MarkEdit.onEditorReady(() => {
   MarkEdit.addExtension([modeField, fountainHighlight(), fountainKeymap(), previewRefresh]);
 });
+
+// ---------- PDF export ----------
+// MarkEdit stubs window.print() to throw — printing is impossible from
+// the editor webview. Instead: paginate → hand-rolled PDF (base-14
+// Courier, no embedded bytes) → MarkEdit.showSavePanel (binary) →
+// open the saved file in Preview, where ⌘P prints it properly.
+let pdfSceneNumbers = true;
+
+function toBase64(bytes: Uint8Array): string {
+  let bin = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+}
+
+async function exportPdf(): Promise<void> {
+  const view = MarkEdit.editorView;
+  const text = view.state.doc.toString();
+  if (!isFountain()) return;
+
+  const info = await MarkEdit.getFileInfo();
+  const base = info
+    ? info.filePath.split("/").pop()!.replace(/\.[^.]+$/, "")
+    : "screenplay";
+
+  const bytes = fountainToPdf(text, base, { sceneNumbers: pdfSceneNumbers });
+  const saved = await MarkEdit.showSavePanel({
+    data: toBase64(bytes),
+    fileName: `${base}.pdf`,
+  });
+  if (saved) {
+    // The panel saved it; reveal in Finder so the user can print (⌘P).
+    void MarkEdit.revealFile();
+  }
+}
 
 // ---------- menu ----------
 MarkEdit.addMainMenuItem({
@@ -392,41 +306,21 @@ MarkEdit.addMainMenuItem({
       }),
     },
     {
-      title: "Show Preview Pane",
-      key: "p",
-      modifiers: ["Shift", "Command"],
+      title: "Export PDF…",
       action: () => {
-        const view = MarkEdit.editorView;
-        if (isFountain() && paneOpen) closePane();
-        else if (isFountain()) openPane(view);
+        void exportPdf();
       },
       state: () => ({
-        isEnabled: isFountain(),
-        isSelected: paneOpen,
-      }),
-    },
-    { separator: true },
-    {
-      title: "Live Preview Edit",
-      key: "p",
-      modifiers: ["Option", "Shift"],
-      action: () => {
-        MarkEdit.editorView.dispatch({ effects: setMode.of("preview") });
-      },
-      state: () => ({
-        isSelected: isFountain() && getMode(MarkEdit.editorView.state) === "preview",
         isEnabled: isFountain(),
       }),
     },
     {
-      title: "Fountain (markdown)",
-      key: "p",
-      modifiers: ["Option", "Command"],
+      title: "Scene Numbers in PDF",
       action: () => {
-        MarkEdit.editorView.dispatch({ effects: setMode.of("source") });
+        pdfSceneNumbers = !pdfSceneNumbers;
       },
       state: () => ({
-        isSelected: isFountain() && getMode(MarkEdit.editorView.state) === "source",
+        isSelected: pdfSceneNumbers,
         isEnabled: isFountain(),
       }),
     },

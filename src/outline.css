@@ -39,7 +39,15 @@
   text-overflow: ellipsis;
 }
 
-/* Sections: bold, black, size-scaled by depth (# biggest). */
+/* Sections: bold, black, size-scaled by depth (# biggest). The hash
+   prefix is shown (dimmed) so the tree reads as Fountain structure. */
+.fo-section .fo-hash {
+  color: rgb(154, 154, 154);
+  font-weight: 400;
+  flex: none;
+  min-width: 1.6em;
+  margin-right: 4px;
+}
 .fo-section.fo-depth-1 { color: rgb(20, 20, 20); font-size: 13.5px; font-weight: 700; margin-top: 6px; }
 .fo-section.fo-depth-2 { color: rgb(20, 20, 20); font-size: 12.5px; font-weight: 700; }
 .fo-section.fo-depth-3 { color: rgb(20, 20, 20); font-size: 12px; font-weight: 700; }

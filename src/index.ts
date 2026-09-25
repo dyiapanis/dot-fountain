@@ -11,3 +11,7 @@ export { modeField, setMode, getMode, toggleMode } from "./mode";
 export type { FountainMode } from "./mode";
 export { buildOutline } from "./outline";
 export type { OutlineItem } from "./outline";
+export { paginate, buildPdf, fountainToPdf, PAPER } from "./print";
+export type { PrintLine, PrintPage, PrintOptions, PrintGeom } from "./print";
+export { fountainStats, gotoNextScene, gotoPrevScene, fountainKeymap } from "./commands";
+export type { FountainStats } from "./commands";

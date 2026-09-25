@@ -105,10 +105,11 @@ describe("paginate", () => {
     const box = (b: Uint8Array) => /MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/.exec(Array.from(b, c => String.fromCharCode(c)).join(""))?.slice(1);
     expect(box(a4)).toEqual(["595.28", "841.89"]);
     expect(box(letter)).toEqual(["612", "792"]);
-    // pagination differs: Letter fits more per page
+    // pagination differs: Letter fits FEWER lines per page (55 vs 56),
+    // so the same script takes (slightly) more Letter pages
     const long = "INT. A - DAY\n\n" + "Action line.\n\n".repeat(400);
     expect(paginate(long, { sceneNumbers: false, paperSize: "Letter" }).length)
-      .toBeLessThan(paginate(long, { sceneNumbers: false, paperSize: "A4" }).length);
+      .toBeGreaterThan(paginate(long, { sceneNumbers: false, paperSize: "A4" }).length);
   });
 
   it("scene numbers toggle: left+right when on, absent when off", () => {

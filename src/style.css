@@ -46,7 +46,6 @@
   color: var(--mf-character, inherit);
   padding-left: var(--mf-ind-character, 22ch);
   text-transform: uppercase;
-  font-weight: 700;
 }
 
 /* Dialogue — 1.0" in, ~3.5" measure. The measure holds even in wide

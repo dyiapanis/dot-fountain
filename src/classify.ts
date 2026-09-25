@@ -60,7 +60,9 @@ const TRANSITION_TO = /TO:[ \t]*$/;
 const TRANSITION_NAMED =
   /^(?:FADE(?: IN| OUT| TO BLACK)?[:.]|CUT TO BLACK\.|SMASH CUT TO:|MATCH CUT TO:|DISSOLVE TO:|WIPE TO:|BACK TO:)/i;
 const PAGE_BREAK = /^={3,}$/; // three or more, alone
-const SECTION = /^(#{1,})[ \t]+\S/;
+// Space after the hashes is OPTIONAL (fountain-js compatible):
+// `# Act One` and `#Act One` are both sections.
+const SECTION = /^(#{1,})[ \t]*\S/;
 const SYNOPSIS = /^=(?!=)[ \t]*\S/;
 const LYRIC = /^~[ \t]*\S/;
 const CENTERED = /^>.+<$/;

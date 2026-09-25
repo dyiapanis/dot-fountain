@@ -87,4 +87,12 @@ describe("buildOutline", () => {
     expect(buildOutline("")).toEqual([]);
     expect(buildOutline("Title: X\n\n===\n")).toEqual([]);
   });
+
+  it("sections without a space after the hashes appear in the outline", () => {
+    const items = buildOutline("#Act One\n\n##The Setup\n\nINT. X - DAY\n");
+    expect(items[0].kind).toBe("section");
+    expect(items[0].label).toBe("Act One");
+    expect(items[1].kind).toBe("section");
+    expect(items[1].label).toBe("The Setup");
+  });
 });

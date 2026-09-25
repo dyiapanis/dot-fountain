@@ -12,19 +12,49 @@ import { parseTitlePage } from "./render-title";
 
 // ---------- geometry (pt; 1cm = 28.3465) ----------
 const CM = 28.3465;
-export const PAGE_W = 595.28; // A4
-export const PAGE_H = 841.89;
+// Paper sizes; screenplay geometry is per-paper. US Letter 612×792 is
+// the US industry default; A4 is the international default.
+export const PAPER: Record<"A4" | "Letter", { w: number; h: number }> = {
+  A4: { w: 595.28, h: 841.89 },
+  Letter: { w: 612, h: 792 },
+};
 const M_LEFT = 3.9 * CM;
 const M_RIGHT = 2.5 * CM;
 const M_TOP = 2.5 * CM;
-const M_BOTTOM = 2.5 * CM;
 const FONT = 12;
 const LINE_H = 12; // single-spaced Courier 12
 const CHAR_W = 7.2; // 10 cpi
-const TEXT_W = PAGE_W - M_LEFT - M_RIGHT; // ~416pt
-const MAX_LINES = Math.floor((PAGE_H - M_TOP - M_BOTTOM) / LINE_H); // 56
+// Industry standard: 55–56 lines per page. Explicit, not derived — the
+// raw geometry allows 58 on A4 / 60 on Letter, which reads too dense
+// next to Final Draft.
+const MAX_LINES = 56;
 
-// element x offsets (left edge, pt) + wrap measures (chars)
+/** Per-paper runtime geometry (widths + wrap measures). */
+export interface PrintGeom {
+  PAGE_W: number;
+  PAGE_H: number;
+  TEXT_W: number;
+  MEASURE: Record<string, number>;
+}
+
+function geometryFor(paperSize: "A4" | "Letter"): PrintGeom {
+  const PAGE_W = PAPER[paperSize]?.w ?? PAPER.A4.w;
+  const PAGE_H = PAPER[paperSize]?.h ?? PAPER.A4.h;
+  const TEXT_W = PAGE_W - M_LEFT - M_RIGHT; // ~416pt A4, ~431pt Letter
+  const MEASURE = {
+    scene: Math.floor(TEXT_W / CHAR_W),
+    action: Math.floor(TEXT_W / CHAR_W),
+    dialogue: Math.floor((TEXT_W - 2 * 3.4 * CM) / CHAR_W),
+    parenthetical: Math.floor((TEXT_W - 4.4 * CM - 2.5 * CM) / CHAR_W),
+    character: Math.floor((TEXT_W - 5.4 * CM - 2.5 * CM) / CHAR_W),
+    transition: Math.floor(TEXT_W / CHAR_W),
+    lyric: Math.floor((TEXT_W - 2 * 3.4 * CM) / CHAR_W),
+    centered: Math.floor(TEXT_W / CHAR_W),
+  };
+  return { PAGE_W, PAGE_H, TEXT_W, MEASURE };
+}
+
+// element x offsets (left edge, pt) + per-paper measures
 const IND = {
   scene: 0,
   action: 0,
@@ -34,16 +64,6 @@ const IND = {
   transition: 0, // right-aligned, computed per line
   lyric: 3.4 * CM,
   centered: 0, // centered, computed per line
-};
-const MEASURE = {
-  scene: Math.floor(TEXT_W / CHAR_W), // 57
-  action: Math.floor(TEXT_W / CHAR_W),
-  dialogue: Math.floor((TEXT_W - 2 * 3.4 * CM) / CHAR_W), // 30
-  parenthetical: Math.floor((TEXT_W - 4.4 * CM - 2.5 * CM) / CHAR_W), // 32
-  character: Math.floor((TEXT_W - 5.4 * CM - 2.5 * CM) / CHAR_W), // 28
-  transition: Math.floor(TEXT_W / CHAR_W),
-  lyric: Math.floor((TEXT_W - 2 * 3.4 * CM) / CHAR_W),
-  centered: Math.floor(TEXT_W / CHAR_W),
 };
 
 /** A rendered output line: text plus where/how to draw it. */
@@ -63,6 +83,8 @@ export interface PrintPage {
 
 export interface PrintOptions {
   sceneNumbers: boolean;
+  /** Paper size; A4 default (international), Letter = US industry. */
+  paperSize?: "A4" | "Letter";
 }
 
 function wrap(text: string, width: number): string[] {
@@ -109,28 +131,12 @@ function cleanBody(
   return body.trim();
 }
 
-function pushElem(
-  pages: PrintPage[],
-  lines: PrintLine[],
-  type: string,
-  body: string,
-  sceneNumber?: string,
-): void {
-  const measure = MEASURE[type as keyof typeof MEASURE] ?? MEASURE.action;
-  const wrapped = wrap(body, measure);
-  for (const t of wrapped) {
-    lines.push({
-      text: t,
-      x: IND[type as keyof typeof IND] ?? 0,
-      align:
-        type === "transition" ? "right"
-        : type === "centered" ? "center"
-        : "left",
-      bold: type === "scene",
-      sceneNumber: sceneNumber,
-    });
-    sceneNumber = undefined; // only on the first line of the element
-  }
+type ElemPart = { type: string; lines: string[] };
+
+/** Wrap one element part into its output lines. */
+function wrapPart(type: string, body: string, geom: PrintGeom): ElemPart {
+  const measure = geom.MEASURE[type] ?? geom.MEASURE.action;
+  return { type, lines: wrap(body, measure) };
 }
 
 /**
@@ -138,6 +144,7 @@ function pushElem(
  * Exported for tests; buildPdf consumes this.
  */
 export function paginate(text: string, opts: PrintOptions): PrintPage[] {
+  const geom = geometryFor(opts.paperSize ?? "A4");
   const linesInfo = classify(text);
   const { title, bodyStart } = parseTitlePage(linesInfo);
   const pages: PrintPage[] = [];
@@ -182,13 +189,16 @@ export function paginate(text: string, opts: PrintOptions): PrintPage[] {
 
   const room = (): number => MAX_LINES - cur.length;
 
-  for (let i = bodyStart; i < linesInfo.length; i++) {
+  const blankLine = (): PrintLine => ({ text: "", x: 0, align: "left", bold: false });
+
+  for (let i = bodyStart; i < linesInfo.length; ) {
     const line = linesInfo[i];
-    if (line.type === "blank") continue;
+    if (line.type === "blank") { i++; continue; }
     // Explicit page break (=== / ====): flush the current page. Never
     // rendered as content.
     if (line.type === "page_break") {
       flush();
+      i++;
       continue;
     }
     // spec-excluded in formatted output
@@ -196,37 +206,102 @@ export function paginate(text: string, opts: PrintOptions): PrintPage[] {
       line.type === "section" || line.type === "synopsis" ||
       line.type === "note" || line.type === "boneyard"
     ) {
+      i++;
       continue;
     }
 
-    const body = cleanBody(line.type, line.text);
-    if (!body) continue;
-
-    let sceneNumber: string | undefined;
-    if (line.type === "scene") {
-      sceneNo += 1;
-      sceneNumber = line.sceneNumber ?? String(sceneNo);
-    }
-
     const type = line.type;
-    const measure = MEASURE[type as keyof typeof MEASURE] ?? MEASURE.action;
-    const height = wrap(body, measure).length;
 
-    // widow control: a scene heading keeps 2 lines of context; any
-    // element taller than the remaining room but shorter than a full
-    // page moves to the next page whole.
-    const need = type === "scene" ? height + 2 : height;
-    if (cur.length > 0 && room() < Math.min(need, height) && height <= MAX_LINES) {
-      flush();
+    // ---- gather one element ----
+    // A dialogue block (character cue + its dialogue/parentheticals) and
+    // a multi-line action paragraph are ONE element: their lines stay
+    // contiguous on the page with no blanks inside.
+    let parts: ElemPart[] = [];
+    let sceneNumber: string | undefined;
+    if (type === "character") {
+      const cleaned: ElemPart[] = [
+        wrapPart("character", cleanBody("character", line.text), geom),
+      ];
+      let j = i + 1;
+      while (j < linesInfo.length) {
+        const t2 = linesInfo[j].type;
+        if (t2 !== "dialogue" && t2 !== "parenthetical") break;
+        const b2 = cleanBody(t2, linesInfo[j].text);
+        if (b2) cleaned.push(wrapPart(t2, b2, geom));
+        j++;
+      }
+      parts = cleaned;
+      i = j;
+    } else if (type === "action") {
+      const texts: string[] = [];
+      let j = i;
+      while (j < linesInfo.length && linesInfo[j].type === "action") {
+        const b2 = cleanBody("action", linesInfo[j].text);
+        if (b2) texts.push(b2);
+        j++;
+      }
+      const joined = texts.join(" ");
+      if (!joined) { i = j; continue; }
+      parts = [wrapPart("action", joined, geom)];
+      i = j;
+    } else {
+      const body = cleanBody(type, line.text);
+      if (!body) { i++; continue; }
+      if (type === "scene") {
+        sceneNo += 1;
+        sceneNumber = line.sceneNumber ?? String(sceneNo);
+      }
+      parts = [wrapPart(type, body, geom)];
+      i++;
     }
-    if (type === "scene" && room() < height + 2 && height + 2 <= MAX_LINES) {
+
+    const height = parts.reduce((n, p) => n + p.lines.length, 0);
+
+    // ---- standard spacing ----
+    // One blank line between elements, two before a scene heading, none
+    // within a dialogue block and none at the top of a fresh page.
+    // Count existing trailing blanks so separations never double up.
+    let trailing = 0;
+    for (let k = cur.length - 1; k >= 0 && cur[k].text === ""; k--) trailing++;
+    const want = type === "scene" ? 2 : 1;
+    let blanks = Math.max(0, want - (cur.length > 0 ? trailing : want));
+
+    // ---- widow control ----
+    // Keep an element (plus its spacing) together when it fits a page;
+    // a scene heading also keeps 2 lines of context below it.
+    const total = blanks + height;
+    const need = type === "scene" ? total + 2 : total;
+    if (cur.length > 0 && room() < need && total <= MAX_LINES) {
       flush();
+      blanks = 0; // fresh page never opens on separator blanks
     }
 
-    pushElem(pages, cur, type, body, opts.sceneNumbers ? sceneNumber : undefined);
+    for (let b = 0; b < blanks; b++) cur.push(blankLine());
 
-    // a "first body page" always flushes at MAX_LINES naturally via room()
-    while (cur.length >= MAX_LINES) flush();
+    let sn = opts.sceneNumbers ? sceneNumber : undefined;
+    for (const p of parts) {
+      for (const t of p.lines) {
+        cur.push({
+          text: t,
+          x: IND[p.type as keyof typeof IND] ?? 0,
+          align:
+            p.type === "transition" ? "right"
+            : p.type === "centered" ? "center"
+            : "left",
+          bold: p.type === "scene",
+          sceneNumber: sn,
+        });
+        sn = undefined; // scene number only on the first line
+      }
+    }
+
+    // overflow (oversize paragraphs only): split at exact page height
+    while (cur.length >= MAX_LINES) {
+      pages.push({ lines: cur.slice(0, MAX_LINES), isTitlePage: false });
+      cur = cur.slice(MAX_LINES);
+      // a page never opens on a blank line — trim separator run
+      while (cur.length > 0 && cur[0].text === "") cur.shift();
+    }
   }
   if (cur.length > 0 || (pages.length === 0 && !title)) {
     if (cur.length > 0) flush();
@@ -262,7 +337,13 @@ function pdfEscape(s: string): string {
 }
 
 /** Build the PDF bytes for paginated pages. */
-export function buildPdf(pages: PrintPage[], baseName: string): Uint8Array {
+export function buildPdf(
+  pages: PrintPage[],
+  baseName: string,
+  paperSize: "A4" | "Letter" = "A4",
+): Uint8Array {
+  const geom = geometryFor(paperSize);
+  const { PAGE_W, PAGE_H } = geom;
   const objects: string[] = []; // 1-indexed
   const pageObjIds: number[] = [];
 
@@ -313,10 +394,13 @@ export function buildPdf(pages: PrintPage[], baseName: string): Uint8Array {
       );
       if (ln.sceneNumber) {
         const n = ln.sceneNumber;
-        const lx = M_LEFT - 28 - n.length * CHAR_W + CHAR_W; // in left margin
+        // Industry format: the left number carries a trailing dot ("1."),
+        // the right one is bare ("1").
+        const left = `${n}.`;
+        const lx = M_LEFT - 28 - left.length * CHAR_W + CHAR_W; // in left margin
         const rx = PAGE_W - M_RIGHT + 10; // in right margin
         parts.push(
-          `BT /F2 ${FONT} Tf ${lx.toFixed(2)} ${y.toFixed(2)} Td (${pdfEscape(n)}) Tj ET`,
+          `BT /F2 ${FONT} Tf ${lx.toFixed(2)} ${y.toFixed(2)} Td (${pdfEscape(left)}) Tj ET`,
         );
         parts.push(
           `BT /F2 ${FONT} Tf ${rx.toFixed(2)} ${y.toFixed(2)} Td (${pdfEscape(n)}) Tj ET`,
@@ -361,5 +445,5 @@ export function fountainToPdf(
   baseName: string,
   opts: PrintOptions,
 ): Uint8Array {
-  return buildPdf(paginate(text, opts), baseName);
+  return buildPdf(paginate(text, opts), baseName, opts.paperSize ?? "A4");
 }

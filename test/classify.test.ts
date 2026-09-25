@@ -168,6 +168,15 @@ describe("structural elements", () => {
     expect(line.level).toBe(2);
   });
 
+  it("sections without a space after the hashes are still sections", () => {
+    const doc = `#Act One\n\n##The Setup\n`;
+    const lines = classify(doc);
+    expect(lines[0].type).toBe("section");
+    expect(lines[0].level).toBe(1);
+    expect(lines[2].type).toBe("section");
+    expect(lines[2].level).toBe(2);
+  });
+
   it("= text is a synopsis", () => {
     expect(types(`= Something happens here.\n`)).toEqual([
       "synopsis",

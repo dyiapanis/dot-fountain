@@ -155,7 +155,6 @@ function renderOutline(view: EditorView): void {
     );
   }
   pane.innerHTML =
-    `<div class="fo-title">Outline</div>` +
     (parts.length
       ? parts.join("")
       : `<div class="fo-empty">No sections or scenes yet.</div>`);

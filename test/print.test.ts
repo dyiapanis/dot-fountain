@@ -54,6 +54,42 @@ describe("paginate", () => {
     expect(all.some(l => l.text === "Action two.")).toBe(true);
   });
 
+  it("standard spacing: 1 blank between blocks, 2 before scene headings", () => {
+    const pages = paginate(DOC, { sceneNumbers: false });
+    const lines = pages.flatMap(p => p.lines).map(l => l.text);
+    const idx = (t: string) => lines.indexOf(t);
+
+    // action -> scene (EXT. YARD): two blanks
+    const yard = idx("EXT. YARD - NIGHT");
+    expect(yard).toBeGreaterThan(0);
+    expect(lines[yard - 1]).toBe("");
+    expect(lines[yard - 2]).toBe("");
+    expect(lines[yard - 3]).not.toBe("");
+    // dialogue block internal: cue and its dialogue contiguous
+    expect(lines[idx("WILL") + 1]).toBe("(quietly)");
+    expect(lines[idx("(quietly)") + 1]).toBe("It works.");
+    // dialogue -> transition: one blank
+    const cut = idx("CUT TO:");
+    expect(lines[cut - 1]).toBe("");
+    expect(lines[cut - 2]).not.toBe("");
+  });
+
+  it("no leading blank on a fresh page; blanks never exceed 2", () => {
+    const doc = Array.from({ length: 120 }, (_, n) =>
+      `INT. ROOM ${n} - DAY\n\nAction line number ${n}. Some words to fill.`,
+    ).join("\n\n");
+    const pages = paginate(doc, { sceneNumbers: false });
+    expect(pages.length).toBeGreaterThan(1);
+    for (const p of pages) {
+      expect(p.lines[0]?.text).not.toBe("");
+      let run = 0;
+      for (const ln of p.lines) {
+        run = ln.text === "" ? run + 1 : 0;
+        if (run > 2) throw new Error("3+ consecutive blanks in output");
+      }
+    }
+  });
+
   it("uppercases the title, keeps author mixed case", () => {
     const pages = paginate(DOC, { sceneNumbers: false });
     expect(pages[0].lines.some(l => l.text === "THE DEMO")).toBe(true);
@@ -61,6 +97,18 @@ describe("paginate", () => {
     expect(pages[0].lines.some(l => l.text === "dot-fountain")).toBe(true);
     // credit stays mixed case
     expect(pages[0].lines.some(l => l.text === "written by")).toBe(true);
+  });
+
+  it("paper size: A4 default, Letter option changes MediaBox", () => {
+    const a4 = fountainToPdf(DOC, "demo", { sceneNumbers: false });
+    const letter = fountainToPdf(DOC, "demo", { sceneNumbers: false, paperSize: "Letter" });
+    const box = (b: Uint8Array) => /MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/.exec(Array.from(b, c => String.fromCharCode(c)).join(""))?.slice(1);
+    expect(box(a4)).toEqual(["595.28", "841.89"]);
+    expect(box(letter)).toEqual(["612", "792"]);
+    // pagination differs: Letter fits more per page
+    const long = "INT. A - DAY\n\n" + "Action line.\n\n".repeat(400);
+    expect(paginate(long, { sceneNumbers: false, paperSize: "Letter" }).length)
+      .toBeLessThan(paginate(long, { sceneNumbers: false, paperSize: "A4" }).length);
   });
 
   it("scene numbers toggle: left+right when on, absent when off", () => {

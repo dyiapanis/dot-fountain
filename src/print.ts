@@ -24,22 +24,24 @@ const M_TOP = 2.5 * CM;
 const FONT = 12;
 const LINE_H = 12; // single-spaced Courier 12
 const CHAR_W = 7.2; // 10 cpi
-// Industry standard: 55–56 lines per page. Explicit, not derived — the
-// raw geometry allows 58 on A4 / 60 on Letter, which reads too dense
-// next to Final Draft.
-const MAX_LINES = 56;
+// Industry standard density: 55–56 lines per page (see geometryFor —
+// per-paper: 55 Letter, 56 A4; explicit, not derived from raw geometry).
 
 /** Per-paper runtime geometry (widths + wrap measures). */
 export interface PrintGeom {
   PAGE_W: number;
   PAGE_H: number;
   TEXT_W: number;
+  /** Max lines per page: 55 on Letter (classic US screenplay page),
+   *  56 on A4 — both industry-standard densities. */
+  MAX_LINES: number;
   MEASURE: Record<string, number>;
 }
 
 function geometryFor(paperSize: "A4" | "Letter"): PrintGeom {
   const PAGE_W = PAPER[paperSize]?.w ?? PAPER.A4.w;
   const PAGE_H = PAPER[paperSize]?.h ?? PAPER.A4.h;
+  const MAX_LINES = paperSize === "Letter" ? 55 : 56;
   const TEXT_W = PAGE_W - M_LEFT - M_RIGHT; // ~416pt A4, ~431pt Letter
   const MEASURE = {
     scene: Math.floor(TEXT_W / CHAR_W),
@@ -51,7 +53,7 @@ function geometryFor(paperSize: "A4" | "Letter"): PrintGeom {
     lyric: Math.floor((TEXT_W - 2 * 3.4 * CM) / CHAR_W),
     centered: Math.floor(TEXT_W / CHAR_W),
   };
-  return { PAGE_W, PAGE_H, TEXT_W, MEASURE };
+  return { PAGE_W, PAGE_H, TEXT_W, MAX_LINES, MEASURE };
 }
 
 // element x offsets (left edge, pt) + per-paper measures
@@ -145,6 +147,7 @@ function wrapPart(type: string, body: string, geom: PrintGeom): ElemPart {
  */
 export function paginate(text: string, opts: PrintOptions): PrintPage[] {
   const geom = geometryFor(opts.paperSize ?? "A4");
+  const MAX_LINES = geom.MAX_LINES;
   const linesInfo = classify(text);
   const { title, bodyStart } = parseTitlePage(linesInfo);
   const pages: PrintPage[] = [];

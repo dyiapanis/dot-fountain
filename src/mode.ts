@@ -20,9 +20,17 @@ export const modeField: StateField<FountainMode> & { [k: string]: any } = StateF
   },
 });
 
-/** Current mode (defaults to "preview" if the host didn't add modeField). */
+/**
+ * Current mode. Robust when the host didn't add modeField to its
+ * extensions: CM6's state.field() throws on an absent field even with
+ * a default argument — so guard and fall back to "preview".
+ */
 export function getMode(state: { field: (f: StateField<FountainMode>, default_: FountainMode) => FountainMode }): FountainMode {
-  return state.field(modeField, "preview");
+  try {
+    return state.field(modeField, "preview");
+  } catch {
+    return "preview";
+  }
 }
 
 /** Dispatch a mode flip (preview ↔ source). */

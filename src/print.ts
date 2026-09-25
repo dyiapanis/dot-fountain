@@ -342,7 +342,7 @@ function pdfEscape(s: string): string {
 /** Build the PDF bytes for paginated pages. */
 export function buildPdf(
   pages: PrintPage[],
-  baseName: string,
+  _baseName: string,
   paperSize: "A4" | "Letter" = "A4",
 ): Uint8Array {
   const geom = geometryFor(paperSize);

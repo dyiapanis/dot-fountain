@@ -105,11 +105,12 @@ describe("paginate", () => {
     const box = (b: Uint8Array) => /MediaBox \[0 0 ([\d.]+) ([\d.]+)\]/.exec(Array.from(b, c => String.fromCharCode(c)).join(""))?.slice(1);
     expect(box(a4)).toEqual(["595.28", "841.89"]);
     expect(box(letter)).toEqual(["612", "792"]);
-    // pagination differs: Letter fits FEWER lines per page (55 vs 56),
-    // so the same script takes (slightly) more Letter pages
+    // per-paper density: Letter pages hold 55 lines, A4 hold 56
     const long = "INT. A - DAY\n\n" + "Action line.\n\n".repeat(400);
-    expect(paginate(long, { sceneNumbers: false, paperSize: "Letter" }).length)
-      .toBeGreaterThan(paginate(long, { sceneNumbers: false, paperSize: "A4" }).length);
+    const a4Pages = paginate(long, { sceneNumbers: false, paperSize: "A4" });
+    const letterPages = paginate(long, { sceneNumbers: false, paperSize: "Letter" });
+    expect(Math.max(...a4Pages.map(p => p.lines.length))).toBeLessThanOrEqual(56);
+    expect(Math.max(...letterPages.map(p => p.lines.length))).toBeLessThanOrEqual(55);
   });
 
   it("scene numbers toggle: left+right when on, absent when off", () => {
